@@ -75,7 +75,10 @@ public abstract class Transaction {
     }
 
     public void setAmount(double amount) {
-            this.amount = amount;
+        if (amount < 0) {
+            throw new IllegalArgumentException("Money cannot be negative");
+        }
+        this.amount = amount;
     }
 
     public LocalDate getDate() {
@@ -109,4 +112,8 @@ public abstract class Transaction {
     public void setWallet(String wallet) {
         this.wallet = wallet;
     }
+
+    public abstract TransactionType getType();
+
+    public abstract double getSignedAmount();
 }
