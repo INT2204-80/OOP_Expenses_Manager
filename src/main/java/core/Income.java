@@ -11,13 +11,13 @@ public class Income extends Transaction {
     }
 
     /**
-     * tranh nguoi dung set amount < 0, vi income la duong.
+     * tranh nguoi dung set amount < 0, vi amount input la duong.
      * @param amount
      * @return
      */
     public static double validateAmount(double amount) {
         if (amount < 0) {
-            throw new IllegalArgumentException("Income amount cannot be negative");
+            throw new IllegalArgumentException("Income amount input cannot be negative");
         }
         return amount;
     }    

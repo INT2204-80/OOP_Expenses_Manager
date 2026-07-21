@@ -11,14 +11,14 @@ public class Expense extends Transaction {
     }
 
     /**
-     * tranh nguoi dung set amount > 0, vi expense la am.
+     * tranh nguoi dung set amount < 0, vi amount input la duong.
      * @param amount
      * @return
      */
 
     public static double validateAmount(double amount) {
         if (amount < 0) {
-            throw new IllegalArgumentException("Expense amount cannot be negative");
+            throw new IllegalArgumentException("Expense amount input cannot be negative");
         }
         return amount;
     }
@@ -49,10 +49,6 @@ public class Expense extends Transaction {
         return paymentMethod;
     }
 
-    /**
-     * gioi han nguoi dung set paymentMethod, nhu la QR Code, Cash, Bank Transfer, Credit Card, Debit Card, E-wallet, etc.
-     * @param paymentMethod
-     */
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
     }
