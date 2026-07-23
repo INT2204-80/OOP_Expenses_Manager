@@ -3,6 +3,10 @@ package core;
 import java.time.LocalDate;
 import java.time.Period;
 
+import core.transaction.Expense;
+import core.transaction.Income;
+import core.transaction.RecurringExpense;
+
 public class Test {
     public static void main(String[] args) {
         testIncome();

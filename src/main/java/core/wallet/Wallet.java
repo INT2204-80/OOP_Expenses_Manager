@@ -1,12 +1,15 @@
-package core;
+package core.wallet;
+
+import core.WalletType;
 
 public abstract class Wallet {
     private String name;
     private double balance;
 
+
     public Wallet(String name, double balance) {
         this.name = name;
-        setBalance(balance);
+        this.balance = validateAmount(balance);
     }
 
     public String getName() {
@@ -21,21 +24,31 @@ public abstract class Wallet {
         return balance;
     }
 
-    public void setBalance(double balance) {
-        if (balance < 0) {
-            throw new IllegalArgumentException("Số dư ví không được phép là số âm!");
+    //validate balance >= 0, neu < 0 thi throw exception
+
+        public static double validateAmount(double amount) {
+        try {
+            if (amount < 0) {
+                throw new IllegalArgumentException("Income amount input cannot be negative");
+            }
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+            // You can choose to handle the exception differently, e.g., return a default value or rethrow it.
         }
-        this.balance = balance;
+        return amount;
+    } 
+
+    public double setBalance(double balance) {
+        this.balance = validateAmount(balance);
+        return this.balance;
     }
 
     public void deposit(double amount) {
-        if (amount < 0) {
-            throw new IllegalArgumentException("Số tiền nạp vào phải lớn hơn 0!");
-        }
+        amount = validateAmount(amount);
         this.balance += amount;
     }
 
     public abstract void withdraw(double amount);
 
-    public abstract TransactionType getWalletType();
+    public abstract WalletType getWalletType();
 }

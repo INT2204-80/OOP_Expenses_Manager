@@ -1,6 +1,8 @@
-package core;
+package core.transaction;
 
 import java.time.LocalDate;
+
+import core.TransactionType;
 
 public class Income extends Transaction {
     private String source;

@@ -1,8 +1,9 @@
-package expensemanager.storage;
+package core.storage;
 
-import core.Transaction;
-import java.util.List;
 import java.io.IOException;
+import java.util.List;
+
+import core.transaction.Transaction;
 
 public interface Storage {
 

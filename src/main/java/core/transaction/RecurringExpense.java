@@ -1,4 +1,4 @@
-package core;
+package core.transaction;
 
 import java.time.LocalDate;
 import java.time.Period;

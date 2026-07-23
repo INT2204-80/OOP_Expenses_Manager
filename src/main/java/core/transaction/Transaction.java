@@ -1,6 +1,8 @@
-package core;
+package core.transaction;
 
 import java.time.LocalDate;
+
+import core.TransactionType;
 
 public abstract class Transaction {
     private int id;
@@ -93,6 +95,7 @@ public abstract class Transaction {
     }
 
     public void setAmount(double amount) {
+        amount = validateAmount(amount);
         this.amount = amount;// sua doi 23/7
     }
 

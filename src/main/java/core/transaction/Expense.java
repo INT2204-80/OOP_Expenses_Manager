@@ -1,6 +1,8 @@
-package core;
+package core.transaction;
 
 import java.time.LocalDate;
+
+import core.TransactionType;
 
 public class Expense extends Transaction {
     private String paymentMethod;
