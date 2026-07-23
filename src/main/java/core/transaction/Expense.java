@@ -3,12 +3,14 @@ package core.transaction;
 import java.time.LocalDate;
 
 import core.TransactionType;
+import core.wallet.Wallet;
 
 public class Expense extends Transaction {
     private String paymentMethod;
 
-    public Expense(int id, double amount, LocalDate date, String note, String category, String wallet, String paymentMethod) {
+    public Expense(int id, double amount, LocalDate date, String note, String category, Wallet wallet, String paymentMethod) {
         super(id, amount, date, note, category, wallet);
+        wallet.withdraw(validateAmount(amount)); // Validate the amount before setting it
         this.paymentMethod = paymentMethod;
     }
 

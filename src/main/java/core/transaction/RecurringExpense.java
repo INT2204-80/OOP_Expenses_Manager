@@ -3,10 +3,12 @@ package core.transaction;
 import java.time.LocalDate;
 import java.time.Period;
 
+import core.wallet.Wallet;
+
 public class RecurringExpense extends Expense {
     private Period period;
 
-    public RecurringExpense(int id, double amount, LocalDate date, String note, String category, String wallet, String paymentMethod, Period period) {
+    public RecurringExpense(int id, double amount, LocalDate date, String note, String category, Wallet wallet, String paymentMethod, Period period) {
         super(id, validateAmount(amount), date, note, category, wallet, paymentMethod);
         this.period = period;
     }

@@ -4,7 +4,7 @@ import core.WalletType;
 
 public abstract class Wallet {
     private String name;
-    private double balance;
+    private double balance = 0.0;
 
 
     public Wallet(String name, double balance) {
@@ -26,10 +26,10 @@ public abstract class Wallet {
 
     //validate balance >= 0, neu < 0 thi throw exception
 
-        public static double validateAmount(double amount) {
+    public static double validateAmount(double amount) {
         try {
             if (amount < 0) {
-                throw new IllegalArgumentException("Income amount input cannot be negative");
+                throw new IllegalArgumentException("Amount input cannot be negative");
             }
         } catch (IllegalArgumentException e) {
             System.out.println(e.getMessage());
@@ -48,7 +48,18 @@ public abstract class Wallet {
         this.balance += amount;
     }
 
-    public abstract void withdraw(double amount);
+    public void withdraw(double amount) {
+        amount = validateAmount(amount);
+        try {
+            if (amount > balance) {
+                throw new IllegalArgumentException("Insufficient balance in wallet.");
+            }
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+            // You can choose to handle the exception differently, e.g., return a default value or rethrow it.
+        }
+        this.balance -= amount;
+    }
 
     public abstract WalletType getWalletType();
 }
