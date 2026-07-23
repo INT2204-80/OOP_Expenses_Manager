@@ -6,7 +6,7 @@ public class Expense extends Transaction {
     private String paymentMethod;
 
     public Expense(int id, double amount, LocalDate date, String note, String category, String wallet, String paymentMethod) {
-        super(id, validateAmount(amount), date, note, category, wallet);
+        super(id, amount, date, note, category, wallet);
         this.paymentMethod = paymentMethod;
     }
 
@@ -15,13 +15,6 @@ public class Expense extends Transaction {
      * @param amount
      * @return
      */
-
-    public static double validateAmount(double amount) {
-        if (amount < 0) {
-            throw new IllegalArgumentException("Expense amount input cannot be negative");
-        }
-        return amount;
-    }
 
     @Override
     public void setAmount(double amount) {

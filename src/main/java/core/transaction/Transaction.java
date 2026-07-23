@@ -22,7 +22,7 @@ public abstract class Transaction {
      */
     public Transaction(int id, double amount, LocalDate date, String note, String category, String wallet) {
         this.id = id;
-        this.amount = amount;
+        this.amount = validateAmount(amount);
         this.date = date;
         this.note = note;
         this.category = category;
@@ -70,15 +70,30 @@ public abstract class Transaction {
         this.id = id;
     }
 
+      /**
+     * tranh nguoi dung set amount < 0, vi amount input la duong.
+     * @param amount
+     * @return
+     */
+    public static double validateAmount(double amount) {
+        try {
+            if (amount < 0) {
+                throw new IllegalArgumentException("Income amount input cannot be negative");
+            }
+        } catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+            // You can choose to handle the exception differently, e.g., return a default value or rethrow it.
+        }
+        return amount;
+    }    
+
+
     public double getAmount() {
         return amount;
     }
 
     public void setAmount(double amount) {
-        if (amount < 0) {
-            throw new IllegalArgumentException("Money cannot be negative");
-        }
-        this.amount = amount;
+        this.amount = amount;// sua doi 23/7
     }
 
     public LocalDate getDate() {
@@ -112,8 +127,4 @@ public abstract class Transaction {
     public void setWallet(String wallet) {
         this.wallet = wallet;
     }
-
-    public abstract TransactionType getType();
-
-    public abstract double getSignedAmount();
 }

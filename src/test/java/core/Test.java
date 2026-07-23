@@ -16,7 +16,9 @@ public class Test {
         assertEquals(TransactionType.INCOME, income.getType(), "Income type should be INCOME");
         assertEquals(500000.0, income.getSignedAmount(), "Income signed amount should be positive");
         assertEquals("Employer", income.getSource(), "Income source should be preserved");
+        //System.out.println("Before changing amount: " );
         income.setAmount(-100);
+        //System.out.println("After changing amount: " );
     }
 
     private static void testExpense() {
