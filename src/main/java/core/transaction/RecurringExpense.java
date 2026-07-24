@@ -7,19 +7,30 @@ import core.wallet.Wallet;
 
 public class RecurringExpense extends Expense {
     private Period period;
+    private LocalDate currentDueDate;
+    private int passedPeriods = 0;
 
     public RecurringExpense(int id, double amount, LocalDate date, String note, String category, Wallet wallet, String paymentMethod, Period period) {
         super(id, validateAmount(amount), date, note, category, wallet, paymentMethod);
         this.period = period;
+        this.currentDueDate = date.plus(period);
     }
 
     /**
      * GOAL : Chỉnh sửa khi muốn tính toán ngày đến hạn tiếp theo dựa trên ngày hiện tại và chu kỳ định kỳ.
-     * Hàm dưới mới chỉ tính toán ngày đến hạn tiếp theo dựa trên ngày giao dịch và chu kỳ định kỳ.
      * @return
      */
+  
     public LocalDate nextDueDate() {
-        return getDate().plus(period);
+        while (LocalDate.now().isAfter(currentDueDate)) {
+            currentDueDate = currentDueDate.plus(period);
+            passedPeriods++;
+        }
+        return currentDueDate;
+    }
+
+    public int getPassedPeriods() {
+        return passedPeriods;
     }
 
     @Override

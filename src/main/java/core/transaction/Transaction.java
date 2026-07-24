@@ -73,7 +73,7 @@ public abstract class Transaction {
         this.id = id;
     }
 
-      /**
+    /**
      * tranh nguoi dung set amount < 0, vi amount input la duong.
      * @param amount
      * @return

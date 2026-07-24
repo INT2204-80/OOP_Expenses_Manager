@@ -54,11 +54,11 @@ public abstract class Wallet {
             if (amount > balance) {
                 throw new IllegalArgumentException("Insufficient balance in wallet.");
             }
+            this.balance -= amount;
         } catch (IllegalArgumentException e) {
             System.out.println(e.getMessage());
             // You can choose to handle the exception differently, e.g., return a default value or rethrow it.
         }
-        this.balance -= amount;
     }
 
     public abstract WalletType getWalletType();
