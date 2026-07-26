@@ -27,13 +27,8 @@ public abstract class Wallet {
     //validate balance >= 0, neu < 0 thi throw exception
 
     public static double validateAmount(double amount) {
-        try {
-            if (amount < 0) {
-                throw new IllegalArgumentException("Amount input cannot be negative");
-            }
-        } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage());
-            // You can choose to handle the exception differently, e.g., return a default value or rethrow it.
+        if (amount < 0) {
+            throw new IllegalArgumentException("Amount input cannot be negative");
         }
         return amount;
     } 

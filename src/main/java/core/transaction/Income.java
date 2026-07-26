@@ -2,13 +2,14 @@ package core.transaction;
 
 import java.time.LocalDate;
 
+import core.Category;
 import core.TransactionType;
 import core.wallet.Wallet;
 
 public class Income extends Transaction {
     private String source;
 
-    public Income(int id, double amount, LocalDate date, String note, String category, Wallet wallet, String source) {
+    public Income(int id, double amount, LocalDate date, String note, Category category, Wallet wallet, String source) {
         super(id, amount, date, note, category, wallet);
         wallet.deposit(validateAmount(amount)); // Validate the amount before setting it
         this.source = source;

@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
+import core.Category;
+import core.TransactionType;
 import core.wallet.CashWallet;
 
 public class RecurringExpenseTest {
@@ -14,13 +16,14 @@ public class RecurringExpenseTest {
     @Test
     void nextDueDateUsesTheCurrentRecurrenceWindow() {
         LocalDate today = LocalDate.now();
+        Category billsCategory = new Category("Bills", TransactionType.EXPENSE);
         CashWallet wallet = new CashWallet("Wallet", 1000.0);
         RecurringExpense recurringExpense = new RecurringExpense(
                 1,
                 50.0,
                 today.minusDays(1),
                 "Subscription",
-                "Bills",
+                billsCategory,
                 wallet,
                 "Cash",
                 Period.ofDays(7)
@@ -35,13 +38,14 @@ public class RecurringExpenseTest {
     @Test
     void nextDueDateMovesForwardWhenTheStoredDueDateIsAlreadyPast() {
         LocalDate today = LocalDate.now();
+        Category billsCategory = new Category("Bills", TransactionType.EXPENSE);
         CashWallet wallet = new CashWallet("Wallet", 1000.0);
         RecurringExpense recurringExpense = new RecurringExpense(
                 2,
                 40.0,
                 today.minusMonths(2),
                 "Internet",
-                "Bills",
+                billsCategory,
                 wallet,
                 "Cash",
                 Period.ofMonths(1)

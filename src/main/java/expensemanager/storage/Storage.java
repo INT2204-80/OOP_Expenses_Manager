@@ -1,9 +1,13 @@
-package core.storage;
+package expensemanager.storage;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
+import core.Budget;
+import core.Category;
 import core.transaction.Transaction;
+import core.wallet.Wallet;
 
 public interface Storage {
 
@@ -22,5 +26,17 @@ public interface Storage {
      * @throws IOException Bắt buộc các class cài đặt phải xử lý lỗi nạp/ghi file
      */
     List<Transaction> load(String path) throws IOException;
+
+    default void saveState(List<Transaction> transactions, List<Wallet> wallets, List<Category> categories,
+            Map<Category, Budget> budgets, String path) throws IOException {
+        save(transactions, path);
+    }
+
+    default void loadState(String path, List<Transaction> transactions, List<Wallet> wallets,
+            List<Category> categories, Map<Category, Budget> budgets) throws IOException {
+        List<Transaction> loadedTransactions = load(path);
+        transactions.clear();
+        transactions.addAll(loadedTransactions);
+    }
 
 }

@@ -44,8 +44,9 @@ public class WalletCreationWithTransactionTest {
 
     @Test
     void incomeTransactionSignedAmountAndSource() {
+        Category salaryCategory = new Category("Salary", TransactionType.INCOME);
         EWallet wallet = new EWallet("PayApp", 1000.0, "PayApp");
-        Income income = new Income(1, 400.0, LocalDate.of(2026, 7, 20), "Freelance", "Work", wallet, "Client");
+        Income income = new Income(1, 400.0, LocalDate.of(2026, 7, 20), "Freelance", salaryCategory, wallet, "Client");
 
         assertEquals(TransactionType.INCOME, income.getType());
         assertEquals(400.0, income.getSignedAmount());
@@ -56,8 +57,21 @@ public class WalletCreationWithTransactionTest {
 
     @Test
     void expenseTransactionSignedAmountAndPaymentMethod() {
+        CashWallet wallet = new CashWallet("Wallet", -1);
+        Category foodCategory = new Category("Food", TransactionType.EXPENSE);
+        Expense expense = new Expense(2, 260.0, LocalDate.of(2026, 7, 20), "Groceries", foodCategory, wallet, "Cash");
+        assertEquals(TransactionType.EXPENSE, expense.getType());
+        //assertEquals(-130.0, expense.getSignedAmount());
+        assertEquals("Cash", expense.getPaymentMethod());
+        assertEquals(wallet, expense.getWallet());
+        assertEquals(120.0, wallet.getBalance()); // Check if the wallet balance is updated after expense
+    }
+
+    @Test
+    void expenseTransactionSignedAmountAndPaymentMethodTwo() {
         CashWallet wallet = new CashWallet("Wallet", 250.0);
-        Expense expense = new Expense(2, 130.0, LocalDate.of(2026, 7, 20), "Groceries", "Food", wallet, "Cash");
+        Category foodCategory = new Category("Food", TransactionType.EXPENSE);
+        Expense expense = new Expense(2, 360.0, LocalDate.of(2026, 7, 20), "Groceries", foodCategory, wallet, "Cash");
         assertEquals(TransactionType.EXPENSE, expense.getType());
         //assertEquals(-130.0, expense.getSignedAmount());
         assertEquals("Cash", expense.getPaymentMethod());
