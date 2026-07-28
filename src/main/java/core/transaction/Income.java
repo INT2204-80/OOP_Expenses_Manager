@@ -13,12 +13,6 @@ public class Income extends Transaction {
     }
 
     @Override
-    public void setAmount(double amount) {
-        amount = validateAmount(amount);
-        super.setAmount(amount);
-    }
-
-    @Override
     public TransactionType getType() {
         return TransactionType.INCOME;
     }
