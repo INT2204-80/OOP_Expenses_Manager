@@ -12,18 +12,6 @@ public class Expense extends Transaction {
         this.paymentMethod = paymentMethod;
     }
 
-    /**
-     * tranh nguoi dung set amount < 0, vi amount input la duong.
-     * @param amount
-     * @return
-     */
-
-    @Override
-    public void setAmount(double amount) {
-        amount = validateAmount(amount);
-        super.setAmount(amount);
-    }
-
     @Override
     public TransactionType getType() {
         return TransactionType.EXPENSE;

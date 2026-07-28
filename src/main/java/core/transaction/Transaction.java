@@ -72,31 +72,30 @@ public abstract class Transaction {
         this.id = id;
     }
 
-      /**
+    /**
      * tranh nguoi dung set amount < 0, vi amount input la duong.
-     * @param amount
-     * @return
+     * <p>So tien luu trong Transaction luon khong am.
+     * Dau cua giao dich duoc xu ly boi getSignedAmount().
+     *
+     * @param amount so tien can kiem tra
+     * @return so tien neu hop le
+     * @throws IllegalArgumentException neu so tien khong lon hon 0,
+     *         la NaN hoac vo cuc
      */
     public static double validateAmount(double amount) {
-        try {
-            if (amount < 0) {
+            if ((amount < 0) || (!Double.isFinite(amount))) {
                 throw new IllegalArgumentException("Income amount input cannot be negative");
             }
-        } catch (IllegalArgumentException e) {
-            System.out.println(e.getMessage());
-            // You can choose to handle the exception differently, e.g., return a default value or rethrow it.
-        }
         return amount;
-    }    
-
+    }
 
     public double getAmount() {
         return amount;
     }
 
     public void setAmount(double amount) {
-        amount = validateAmount(amount);
-        this.amount = amount;// sua doi 23/7
+        this.amount = validateAmount(amount);
+        //this.amount = amount;// sua doi 23/7
     }
 
     public LocalDate getDate() {

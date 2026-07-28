@@ -7,7 +7,10 @@ public class RecurringExpense extends Expense {
     private Period period;
 
     public RecurringExpense(int id, double amount, LocalDate date, String note, String category, String wallet, String paymentMethod, Period period) {
-        super(id, validateAmount(amount), date, note, category, wallet, paymentMethod);
+        super(id, amount, date, note, category, wallet, paymentMethod);
+        if (period == null) {
+            throw new IllegalArgumentException("Period cannot be null");
+        }
         this.period = period;
     }
 
