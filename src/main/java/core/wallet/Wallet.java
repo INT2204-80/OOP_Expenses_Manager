@@ -10,7 +10,7 @@ import core.WalletType;
  */
 public abstract class Wallet {
     private String name;
-    private double balance;
+    private double balance = 0.0;
 
     /**
      * Khoi tao mot vi voi ten va so du ban dau.
@@ -89,13 +89,6 @@ public abstract class Wallet {
         setBalance(getBalance() + amount);
     }
 
-    /**
-     * Rut tien khoi vi.
-     *
-     * @param amount so tien can rut
-     * @throws IllegalArgumentException neu so tien khong hop le
-     * @throws IllegalStateException neu so du khong du
-     */
     public abstract void withdraw(double amount);
 
     /**
