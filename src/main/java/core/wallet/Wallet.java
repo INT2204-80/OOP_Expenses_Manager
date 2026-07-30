@@ -89,7 +89,19 @@ public abstract class Wallet {
         setBalance(getBalance() + amount);
     }
 
-    public abstract void withdraw(double amount);
+    public void withdraw(double amount) {
+        if (!Double.isFinite(amount) || amount <= 0) {
+            throw new IllegalArgumentException(
+                    "Withdrawal amount must be positive and finite");
+        }
+
+        if (amount > getBalance()) {
+            throw new IllegalStateException("Insufficient balance");
+        }
+
+        setBalance(getBalance() - amount);
+    }
+
 
     /**
      * Lay loai vi.

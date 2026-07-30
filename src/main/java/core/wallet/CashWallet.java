@@ -25,19 +25,6 @@ public class CashWallet extends Wallet {
      * @throws IllegalArgumentException neu so tien khong duong, NaN hoac vo cuc
      * @throws IllegalStateException neu so du khong du
      */
-    @Override
-    public void withdraw(double amount) {
-        if (!Double.isFinite(amount) || amount <= 0) {
-            throw new IllegalArgumentException(
-                    "Withdrawal amount must be positive and finite");
-        }
-
-        if (amount > getBalance()) {
-            throw new IllegalStateException("Insufficient balance");
-        }
-
-        setBalance(getBalance() - amount);
-    }
 
     /**
      * Lay loai vi tien mat.

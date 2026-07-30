@@ -11,8 +11,8 @@ import core.wallet.BankAccount;
 import core.wallet.CashWallet;
 import core.wallet.EWallet;
 
-public class WalletCreationWithTransactionTest {
 
+public class WalletCreationWithTransactionTest {
     @Test
     void cashWalletDepositWithdraw() {
         CashWallet wallet = new CashWallet("Pocket", 200.0);
@@ -45,7 +45,8 @@ public class WalletCreationWithTransactionTest {
     @Test
     void incomeTransactionSignedAmountAndSource() {
         EWallet wallet = new EWallet("PayApp", 1000.0, "PayApp");
-        Income income = new Income(1, 400.0, LocalDate.of(2026, 7, 20), "Freelance", "Work", wallet, "Client");
+        Category category = new Category("Work" , TransactionType.INCOME);
+        Income income = new Income(1, 400.0, LocalDate.of(2026, 7, 20), "Freelance", category, wallet, "Client");
 
         assertEquals(TransactionType.INCOME, income.getType());
         assertEquals(400.0, income.getSignedAmount());
@@ -57,7 +58,8 @@ public class WalletCreationWithTransactionTest {
     @Test
     void expenseTransactionSignedAmountAndPaymentMethod() {
         CashWallet wallet = new CashWallet("Wallet", 250.0);
-        Expense expense = new Expense(2, 130.0, LocalDate.of(2026, 7, 20), "Groceries", "Food", wallet, "Cash");
+        Category category = new Category("Groceries", TransactionType.EXPENSE);
+        Expense expense = new Expense(2, 130.0, LocalDate.of(2026, 7, 20), "Freelance", category, wallet, "Cash");
         assertEquals(TransactionType.EXPENSE, expense.getType());
         //assertEquals(-130.0, expense.getSignedAmount());
         assertEquals("Cash", expense.getPaymentMethod());

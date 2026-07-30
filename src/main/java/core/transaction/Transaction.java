@@ -2,6 +2,7 @@ package core.transaction;
 
 import java.time.LocalDate;
 
+import core.Category;
 import core.TransactionType;
 import core.wallet.Wallet;
 
@@ -10,7 +11,7 @@ public abstract class Transaction {
     private double amount;
     private LocalDate date;
     private String note;
-    private String category;
+    private Category category;
     private Wallet wallet;
     
 
@@ -23,7 +24,7 @@ public abstract class Transaction {
      * @param category
      * @param wallet
      */
-    public Transaction(int id, double amount, LocalDate date, String note, String category, Wallet wallet) {
+    public Transaction(int id, double amount, LocalDate date, String note, Category category, Wallet wallet) {
         this.id = id;
         this.amount = validateAmount(amount);
         this.date = date;
@@ -115,11 +116,11 @@ public abstract class Transaction {
         this.note = note;
     }
 
-    public String getCategory() {
+    public Category getCategory() {
         return category;
     }
 
-    public void setCategory(String category) {
+    public void setCategory(Category category) {
         this.category = category;
     }
 

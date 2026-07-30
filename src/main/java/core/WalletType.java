@@ -7,7 +7,7 @@ public enum WalletType {
 
     /** Vi tien mat. */
     CASH,
-
+    
     /** Tai khoan ngan hang. */
     BANK,
 
