@@ -40,8 +40,8 @@ public abstract class Transaction {
     public abstract TransactionType getType();
 
     /**
-     * so tien có dấu, income là dương, expense là âm
-     * @return
+     * so tien có dấu, income là dương, expense là âm.
+     * @return.
      */
 
     public abstract double getSignedAmount();
