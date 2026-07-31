@@ -24,15 +24,21 @@ public class RecurringExpense extends Expense {
      * GOAL : Chỉnh sửa khi muốn tính toán ngày đến hạn tiếp theo dựa trên ngày hiện tại và chu kỳ định kỳ.
      * @return
      */
-  
+
     public LocalDate nextDueDate() {
-        while (LocalDate.now().isAfter(currentDueDate)) {
-            currentDueDate = currentDueDate.plus(period);
+        LocalDate today = LocalDate.now();
+
+        currentDueDate = getDate().plus(
+                period.multipliedBy(passedPeriods + 1));
+
+        while (today.isAfter(currentDueDate)) {
             passedPeriods++;
+            currentDueDate = getDate().plus(
+                    period.multipliedBy(passedPeriods + 1));
         }
+
         return currentDueDate;
     }
-
     public int getPassedPeriods() {
         return passedPeriods;
     }
