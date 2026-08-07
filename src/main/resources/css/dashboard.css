@@ -1,0 +1,317 @@
+/* dashboard.css - Styling to mimic Spendee aesthetics */
+
+.dashboard-container {
+    -fx-background-color: #f7f9fc;
+    -fx-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* --- TOP NAVIGATION BAR --- */
+.top-bar {
+    -fx-background-color: white;
+    -fx-padding: 10px 40px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
+}
+
+.logo-circle {
+    -fx-fill: linear-gradient(to right, #4ade80, #38bdf8);
+}
+
+.logo-s-text {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+}
+
+.logo-text {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2937;
+}
+
+.nav-item-container {
+    -fx-padding: 15px 10px;
+}
+
+.nav-item-active-container {
+    -fx-padding: 15px 10px;
+    -fx-border-color: #4ade80;
+    -fx-border-width: 0 0 3px 0;
+}
+
+.nav-item {
+    -fx-font-size: 14px;
+    -fx-text-fill: #a0aec0;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.nav-item-active {
+    -fx-text-fill: #10b981;
+}
+
+.nav-item-active-container .nav-item {
+    -fx-text-fill: #10b981;
+}
+
+.profile-name {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #4a5568;
+}
+
+/* --- CONTENT AREA --- */
+.section-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2d3748;
+}
+
+/* Wallets Section */
+.wallet-card {
+    -fx-background-color: white;
+    -fx-background-radius: 8px;
+    -fx-padding: 20px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);
+}
+
+.wallet-icon {
+    -fx-font-size: 36px;
+}
+
+.wallet-name {
+    -fx-font-size: 14px;
+    -fx-text-fill: #4a5568;
+}
+
+.wallet-type {
+    -fx-font-size: 12px;
+    -fx-text-fill: #a0aec0;
+}
+
+.wallet-balance {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #4ade80;
+}
+
+.wallets-scrollpane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+.wallets-scrollpane .viewport {
+    -fx-background-color: transparent;
+}
+
+.outline-button {
+    -fx-background-color: white;
+    -fx-border-color: #4ade80;
+    -fx-border-radius: 4px;
+    -fx-border-width: 1px;
+    -fx-text-fill: #4ade80;
+    -fx-font-weight: bold;
+    -fx-padding: 8px 15px;
+    -fx-cursor: hand;
+    -fx-min-width: 200px;
+}
+.outline-button:hover {
+    -fx-background-color: #f0fdf4;
+}
+
+.solid-button {
+    -fx-background-color: #10b981;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8px 15px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+.solid-button:hover {
+    -fx-background-color: #059669;
+}
+
+.toggle-button {
+    -fx-background-color: white;
+    -fx-text-fill: #a0aec0;
+    -fx-font-weight: bold;
+    -fx-padding: 5px 15px;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-cursor: hand;
+}
+
+/* Tabs */
+.nav-item-active-container {
+    -fx-border-color: transparent transparent #10b981 transparent;
+    -fx-border-width: 0 0 3px 0;
+    -fx-padding: 0 0 5px 0;
+}
+.nav-item-container {
+    -fx-border-color: transparent;
+    -fx-padding: 0 0 5px 0;
+    -fx-cursor: hand;
+}
+
+/* Budget View */
+.budget-empty-box {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-padding: 40px;
+}
+.budget-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: #a0aec0;
+    -fx-font-weight: bold;
+}
+
+/* Overview Section */
+.date-selector {
+    -fx-background-color: white;
+    -fx-background-radius: 4px;
+    -fx-padding: 5px 10px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
+}
+
+.date-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #a0aec0;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+}
+
+.date-text {
+    -fx-font-size: 13px;
+    -fx-text-fill: #4a5568;
+    -fx-font-weight: bold;
+}
+
+.date-icon {
+    -fx-text-fill: #a0aec0;
+}
+
+/* Summary Card styling */
+.summary-card {
+    -fx-background-color: white;
+    -fx-background-radius: 8px;
+    -fx-padding: 20px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 10, 0, 0, 4);
+    -fx-min-width: 220px;
+}
+
+.summary-card-title {
+    -fx-font-size: 14px;
+    -fx-text-fill: #718096;
+    -fx-padding: 0 0 5px 0;
+    -fx-font-weight: bold;
+}
+
+.summary-card-value {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.value-spendee-green {
+    -fx-text-fill: #4ade80;
+}
+
+/* Empty State area */
+.empty-state-area {
+    -fx-padding: 50px;
+}
+
+.empty-state-icon {
+    -fx-font-size: 80px;
+    -fx-text-fill: #cbd5e0;
+}
+
+.empty-state-text {
+    -fx-font-size: 14px;
+    -fx-text-fill: #a0aec0;
+}
+
+/* FAB Help Button */
+.fab-help {
+    -fx-background-color: #10b981;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 30px;
+    -fx-padding: 10px 20px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 4);
+}
+.fab-help:hover {
+    -fx-background-color: #059669;
+}
+
+/* --- WALLET SETTINGS --- */
+.settings-sidebar {
+    -fx-border-color: transparent #e2e8f0 transparent transparent;
+    -fx-border-width: 0 1px 0 0;
+}
+.settings-menu-item {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #a0aec0;
+    -fx-padding: 10px 0;
+    -fx-cursor: hand;
+}
+.settings-menu-item-active {
+    -fx-text-fill: #3b82f6; /* Spendee blue for settings menu */
+}
+.settings-content-area {
+    -fx-background-color: transparent;
+}
+.settings-section-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2d3748;
+}
+.settings-field-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #a0aec0;
+    -fx-font-weight: bold;
+}
+.settings-textfield {
+    -fx-background-color: white;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-padding: 8px 12px;
+    -fx-font-size: 14px;
+}
+.settings-textfield:focused {
+    -fx-border-color: #4ade80;
+}
+.settings-combo {
+    -fx-background-color: white;
+    -fx-border-color: #e2e8f0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-padding: 3px 6px;
+    -fx-font-size: 14px;
+}
+.category-list-item {
+    -fx-padding: 10px 0;
+    -fx-border-color: transparent transparent #edf2f7 transparent;
+    -fx-border-width: 0 0 1px 0;
+}
+.category-list-name {
+    -fx-font-size: 14px;
+    -fx-text-fill: #4a5568;
+}
+.category-list-count {
+    -fx-font-size: 13px;
+    -fx-text-fill: #a0aec0;
+}
+.category-list-action {
+    -fx-font-size: 16px;
+    -fx-text-fill: #10b981;
+    -fx-cursor: hand;
+}
+.category-list-action-danger {
+    -fx-font-size: 16px;
+    -fx-text-fill: #ef4444;
+    -fx-cursor: hand;
+}
