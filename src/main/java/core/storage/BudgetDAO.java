@@ -22,18 +22,21 @@ public class BudgetDAO {
                 "category_name VARCHAR(255)," +
                 "period VARCHAR(50) NOT NULL," +
                 "start_date DATE NOT NULL," +
-                "end_date DATE" +
+                "end_date DATE," +
+                "wallet_id INT" +
                 ")";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement()) {
             stmt.execute(createTableSql);
+            // Ensure wallet_id column exists if table was already created
+            try { stmt.executeUpdate("ALTER TABLE budgets ADD COLUMN wallet_id INT"); } catch (SQLException e) {}
         } catch (SQLException e) {
             System.err.println("Error initializing budgets table: " + e.getMessage());
         }
     }
 
-    public void addBudget(Budget budget) {
-        String sql = "INSERT INTO budgets (name, limit_amount, current_spent, category_name, period, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    public void addBudget(Budget budget, int walletId) {
+        String sql = "INSERT INTO budgets (name, limit_amount, current_spent, category_name, period, start_date, end_date, wallet_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
@@ -52,6 +55,7 @@ public class BudgetDAO {
             } else {
                 pstmt.setNull(7, Types.DATE);
             }
+            pstmt.setInt(8, walletId);
 
             pstmt.executeUpdate();
 
@@ -105,34 +109,50 @@ public class BudgetDAO {
     }
 
     public List<Budget> getAllBudgets() {
+        return getBudgetsByWallet(-1);
+    }
+    
+    public List<Budget> getBudgetsByWallet(int walletId) {
         List<Budget> budgets = new ArrayList<>();
-        String sql = "SELECT * FROM budgets";
+        String sql;
+        if (walletId == -1) {
+            sql = "SELECT * FROM budgets";
+        } else {
+            sql = "SELECT * FROM budgets WHERE wallet_id = ?";
+        }
+        
         try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String name = rs.getString("name");
-                double limitAmount = rs.getDouble("limit_amount");
-                double currentSpent = rs.getDouble("current_spent");
-                String categoryName = rs.getString("category_name");
-                String periodStr = rs.getString("period");
-                LocalDate startDate = rs.getDate("start_date").toLocalDate();
-                LocalDate endDate = rs.getDate("end_date") != null ? rs.getDate("end_date").toLocalDate() : null;
+            if (walletId != -1) {
+                pstmt.setInt(1, walletId);
+            }
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    int id = rs.getInt("id");
+                    String name = rs.getString("name");
+                    double limitAmount = rs.getDouble("limit_amount");
+                    double currentSpent = rs.getDouble("current_spent");
+                    String categoryName = rs.getString("category_name");
+                    String periodStr = rs.getString("period");
+                    LocalDate startDate = rs.getDate("start_date").toLocalDate();
+                    Date endDateDb = rs.getDate("end_date");
+                    LocalDate endDate = (endDateDb != null) ? endDateDb.toLocalDate() : null;
 
-                Category category = null;
-                if (categoryName != null) {
-                    category = new Category(categoryName, TransactionType.EXPENSE);
+                    Category category = null;
+                    if (categoryName != null) {
+                        category = new Category(categoryName, TransactionType.EXPENSE);
+                    }
+
+                    Period period = Period.valueOf(periodStr);
+
+                    Budget budget = new Budget(id, name, limitAmount, currentSpent, category, period, startDate, endDate);
+                    budgets.add(budget);
                 }
-                
-                Period period = Period.valueOf(periodStr);
-                
-                Budget budget = new Budget(id, name, limitAmount, currentSpent, category, period, startDate, endDate);
-                budgets.add(budget);
             }
         } catch (SQLException e) {
-            System.err.println("Error loading budgets: " + e.getMessage());
+            System.err.println("Error retrieving budgets: " + e.getMessage());
         }
         return budgets;
     }

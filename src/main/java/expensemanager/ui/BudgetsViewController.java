@@ -285,7 +285,7 @@ public class BudgetsViewController {
         
         Optional<Budget> result = dialog.showAndWait();
         result.ifPresent(budget -> {
-            budgetDAO.addBudget(budget);
+            budgetDAO.addBudget(budget, -1);
             // After adding, recalculate to fetch existing transactions if any
             budgetDAO.recalculateBudgetSpentAmount(budget);
             budgetDAO.updateBudget(budget);

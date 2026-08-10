@@ -43,6 +43,10 @@ public class RecurringExpense extends Expense {
         return passedPeriods;
     }
 
+    public void setPassedPeriods(int passedPeriods) {
+        this.passedPeriods = passedPeriods;
+    }
+
     @Override
     public void printInfo() {
         super.printInfo();

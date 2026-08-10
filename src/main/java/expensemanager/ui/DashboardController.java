@@ -22,12 +22,17 @@ public class DashboardController {
     @FXML private Label totalPeriodChangeLabel;
     @FXML private Label totalExpensesLabel;
     @FXML private Label totalIncomeLabel;
+    @FXML private Label periodLabel;
+    
+    private java.time.LocalDate currentPeriodStart = java.time.LocalDate.now().withDayOfMonth(1);
+    private java.time.LocalDate currentPeriodEnd = java.time.LocalDate.now().withDayOfMonth(java.time.LocalDate.now().lengthOfMonth());
 
     private WalletDAO walletDAO = new WalletDAO();
 
     @FXML
     public void initialize() {
         refreshWallets();
+        refreshOverview();
     }
 
     private void refreshWallets() {
@@ -39,7 +44,7 @@ public class DashboardController {
         
         // If no wallets exist, display a dummy one to match the exact Spendee mockup
         if (wallets.isEmpty()) {
-            Wallet defaultWallet = new CashWallet("Ví tiền mặt", 0.0);
+            Wallet defaultWallet = new CashWallet("VÃ­ tiá»n máº·t", 0.0);
             walletDAO.addWallet(defaultWallet);
             wallets = walletDAO.getAllWallets();
         }
@@ -101,7 +106,7 @@ public class DashboardController {
         VBox.setMargin(details, new Insets(0, 0, 0, 10));
 
         // Delete button
-        Button deleteBtn = new Button("🗑");
+        Button deleteBtn = new Button("\uD83D\uDDD1");
         deleteBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #ef4444; -fx-cursor: hand; -fx-font-size: 16px;");
         deleteBtn.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this wallet and all its transactions?", ButtonType.YES, ButtonType.NO);
@@ -241,6 +246,100 @@ public class DashboardController {
     }
 
     @FXML
+    public void handlePrevPeriod() {
+        long days = java.time.temporal.ChronoUnit.DAYS.between(currentPeriodStart, currentPeriodEnd) + 1;
+        currentPeriodStart = currentPeriodStart.minusDays(days);
+        currentPeriodEnd = currentPeriodEnd.minusDays(days);
+        refreshOverview();
+    }
+
+    
+
+    @FXML
+    public void handleNextPeriod() {
+        long days = java.time.temporal.ChronoUnit.DAYS.between(currentPeriodStart, currentPeriodEnd) + 1;
+        currentPeriodStart = currentPeriodStart.plusDays(days);
+        currentPeriodEnd = currentPeriodEnd.plusDays(days);
+        refreshOverview();
+    }
+
+            @FXML
+    public void handleCustomPeriod() {
+        javafx.scene.control.Dialog<javafx.util.Pair<java.time.LocalDate, java.time.LocalDate>> dialog = new javafx.scene.control.Dialog<>();
+        dialog.setTitle("Chọn thời gian");
+        dialog.setHeaderText("Chọn khoảng thời gian muốn xem");
+
+        javafx.scene.control.ButtonType okButtonType = new javafx.scene.control.ButtonType("Xác nhận", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(okButtonType, javafx.scene.control.ButtonType.CANCEL);
+
+        javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new javafx.geometry.Insets(20, 20, 10, 10));
+
+        javafx.scene.control.DatePicker startDatePicker = new javafx.scene.control.DatePicker(currentPeriodStart);
+        javafx.scene.control.DatePicker endDatePicker = new javafx.scene.control.DatePicker(currentPeriodEnd);
+
+        grid.add(new javafx.scene.control.Label("Từ ngày:"), 0, 0);
+        grid.add(startDatePicker, 1, 0);
+        grid.add(new javafx.scene.control.Label("Đến ngày:"), 0, 1);
+        grid.add(endDatePicker, 1, 1);
+
+        dialog.getDialogPane().setContent(grid);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == okButtonType) {
+                return new javafx.util.Pair<>(startDatePicker.getValue(), endDatePicker.getValue());
+            }
+            return null;
+        });
+
+        java.util.Optional<javafx.util.Pair<java.time.LocalDate, java.time.LocalDate>> result = dialog.showAndWait();
+        result.ifPresent(pair -> {
+            if (pair.getKey() != null && pair.getValue() != null) {
+                if (pair.getKey().isAfter(pair.getValue())) {
+                    javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+                    alert.setHeaderText("Ngày bắt dầu không thể lớn hơn ngày kẽt thúc!");
+                    alert.showAndWait();
+                } else {
+                    currentPeriodStart = pair.getKey();
+                    currentPeriodEnd = pair.getValue();
+                    refreshOverview();
+                }
+            }
+        });
+    }
+
+    private void refreshOverview() {
+        java.time.LocalDate endDate = currentPeriodEnd;
+        
+        if (periodLabel != null) {
+            java.time.format.DateTimeFormatter dtf = java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy", java.util.Locale.ENGLISH);
+            periodLabel.setText(currentPeriodStart.format(dtf) + " - " + endDate.format(dtf));
+        }
+
+        core.storage.TransactionDAO dao = new core.storage.TransactionDAO();
+        try {
+            double income = dao.getTotalAmountForPeriod("INCOME", currentPeriodStart, endDate);
+            double expense = dao.getTotalAmountForPeriod("EXPENSE", currentPeriodStart, endDate);
+            double change = income - expense;
+
+            if (totalIncomeLabel != null) totalIncomeLabel.setText(String.format("%,.2f VND", income));
+            if (totalExpensesLabel != null) totalExpensesLabel.setText(String.format("%,.2f VND", expense));
+            if (totalPeriodChangeLabel != null) {
+                totalPeriodChangeLabel.setText(String.format("%,.2f VND", change));
+                if (change < 0) {
+                    totalPeriodChangeLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 24px; -fx-font-weight: bold;");
+                } else {
+                    totalPeriodChangeLabel.setStyle("-fx-text-fill: #3b82f6; -fx-font-size: 24px; -fx-font-weight: bold;");
+                }
+            }
+        } catch (java.sql.SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
     public void handleConnectBank() {
         Dialog<Wallet> dialog = new Dialog<>();
         dialog.setTitle("Connect Bank Account");
@@ -308,3 +407,7 @@ public class DashboardController {
         }
     }
 }
+
+
+
+

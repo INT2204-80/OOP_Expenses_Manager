@@ -5,6 +5,18 @@ import java.util.Objects;
 public class Category {
     private String name;
     private TransactionType type;
+    private String icon;
+    private String color;
+
+    public Category(String name, TransactionType type, String icon, String color) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Category name cannot be empty");
+        }
+        this.name = name.trim();
+        this.type = Objects.requireNonNull(type, "TransactionType cannot be null");
+        this.icon = icon;
+        this.color = color;
+    }
 
     public Category(String name, TransactionType type) {
         if (name == null || name.trim().isEmpty()) {
@@ -30,6 +42,11 @@ public class Category {
         return type;
     }
 
+    public String getIcon() { return icon; }
+    public void setIcon(String icon) { this.icon = icon; }
+    public String getColor() { return color; }
+    public void setColor(String color) { this.color = color; }
+
     public void setType(TransactionType type) {
         this.type = Objects.requireNonNull(type, "TransactionType cannot be null");
     }
@@ -52,3 +69,5 @@ public class Category {
         return name + " (" + type + ")";
     }
 }
+
+

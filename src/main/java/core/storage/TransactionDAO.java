@@ -13,22 +13,49 @@ import java.util.List;
 
 public class TransactionDAO {
     
+    static {
+        // Ensure recurring columns exist
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement()) {
+            try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN recurring_period VARCHAR(50)"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN passed_periods INT DEFAULT 0"); } catch (SQLException e) {}
+        } catch (SQLException e) {
+        }
+    }
+    
     public int getOrCreateCategoryId(String name, String type) throws SQLException {
+        return getOrCreateCategoryId(name, type, null, null);
+    }
+
+    public int getOrCreateCategoryId(String name, String type, String icon, String color) throws SQLException {
         String selectSql = "SELECT id FROM categories WHERE name = ? AND transaction_type = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(selectSql)) {
             pstmt.setString(1, name);
             pstmt.setString(2, type);
             try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) return rs.getInt("id");
+                if (rs.next()) {
+                    int id = rs.getInt("id");
+                    String updateSql = "UPDATE categories SET icon = ?, color = ?, is_deleted = FALSE WHERE id = ?";
+                        try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+                            updateStmt.setString(1, icon);
+                            updateStmt.setString(2, color);
+                            updateStmt.setInt(3, id);
+                            updateStmt.executeUpdate();
+                        }
+                    return id;
+                }
             }
         }
         
-        String insertSql = "INSERT INTO categories (name, transaction_type) VALUES (?, ?)";
+        String insertSql = "INSERT INTO categories (name, transaction_type, icon, color) VALUES (?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, name);
             pstmt.setString(2, type);
+            pstmt.setString(3, icon);
+            pstmt.setString(4, color);
             pstmt.executeUpdate();
             try (ResultSet rs = pstmt.getGeneratedKeys()) {
                 if (rs.next()) return rs.getInt(1);
@@ -38,12 +65,14 @@ public class TransactionDAO {
     }
 
     public List<Category> getAllCategories() {
-        // Ensure is_deleted column exists
+        // Ensure is_deleted, icon, color columns exist
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement()) {
-            stmt.executeUpdate("ALTER TABLE categories ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE");
+            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN icon VARCHAR(255)"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN color VARCHAR(255)"); } catch (SQLException e) {}
         } catch (SQLException e) {
-            // Column already exists, ignore
+            // Ignore outer connection errors here, let them fail below
         }
 
         List<Category> categories = new ArrayList<>();
@@ -54,7 +83,9 @@ public class TransactionDAO {
             while (rs.next()) {
                 String name = rs.getString("name");
                 String typeStr = rs.getString("transaction_type");
-                categories.add(new Category(name, TransactionType.valueOf(typeStr)));
+                String icon = rs.getString("icon");
+                String color = rs.getString("color");
+                categories.add(new Category(name, TransactionType.valueOf(typeStr), icon, color));
             }
         } catch (SQLException e) {
             System.err.println("Error fetching categories: " + e.getMessage());
@@ -77,7 +108,9 @@ public class TransactionDAO {
                     while (rs.next()) {
                         String name = rs.getString("name");
                         String typeStr = rs.getString("transaction_type");
-                        categories.add(new Category(name, TransactionType.valueOf(typeStr)));
+                        String icon = rs.getString("icon");
+                        String color = rs.getString("color");
+                        categories.add(new Category(name, TransactionType.valueOf(typeStr), icon, color));
                     }
                 }
             } catch (SQLException e) {
@@ -86,6 +119,87 @@ public class TransactionDAO {
         }
 
         return categories;
+    }
+
+    public int getCategoryId(String name, String type) throws SQLException {
+        String query = "SELECT id FROM categories WHERE name = ? AND transaction_type = ? AND (is_deleted = FALSE OR is_deleted IS NULL)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, type);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        }
+        return -1;
+    }
+
+    public void mergeCategories(List<Category> sources, Category target) throws SQLException {
+        int targetId = getCategoryId(target.getName(), target.getType().name());
+        if (targetId == -1) return;
+
+        String updateSql = "UPDATE transactions SET category_id = ? WHERE category_id = ?";
+        String deleteSql = "UPDATE categories SET is_deleted = TRUE WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+             PreparedStatement deleteStmt = conn.prepareStatement(deleteSql)) {
+            
+            conn.setAutoCommit(false);
+            try {
+                for (Category src : sources) {
+                    int srcId = getCategoryId(src.getName(), src.getType().name());
+                    if (srcId != -1 && srcId != targetId) {
+                        updateStmt.setInt(1, targetId);
+                        updateStmt.setInt(2, srcId);
+                        updateStmt.executeUpdate();
+
+                        deleteStmt.setInt(1, srcId);
+                        deleteStmt.executeUpdate();
+                    }
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
+
+    public void updateCategory(String oldName, String oldType, String newName, String newType, String newIcon, String newColor) throws SQLException {
+        int id = getCategoryId(oldName, oldType);
+        if (id == -1) return;
+        
+        String sql = "UPDATE categories SET name = ?, transaction_type = ?, icon = ?, color = ? WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, newName);
+            pstmt.setString(2, newType.toUpperCase());
+            pstmt.setString(3, newIcon);
+            pstmt.setString(4, newColor);
+            pstmt.setInt(5, id);
+            pstmt.executeUpdate();
+        }
+    }
+
+    public double getTotalAmountForPeriod(String type, java.time.LocalDate startDate, java.time.LocalDate endDate) throws SQLException {
+        String sql = "SELECT SUM(amount) as total FROM transactions WHERE transaction_type = ? AND date >= ? AND date <= ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, type);
+            pstmt.setDate(2, java.sql.Date.valueOf(startDate));
+            pstmt.setDate(3, java.sql.Date.valueOf(endDate));
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble("total");
+                }
+            }
+        }
+        return 0.0;
     }
 
     public void softDeleteCategory(String name, String type) throws SQLException {
@@ -99,7 +213,7 @@ public class TransactionDAO {
     }
 
     public void saveTransaction(Transaction t, int walletId) {
-        String insertSql = "INSERT INTO transactions (amount, date, note, category_id, wallet_id, transaction_type, source, payment_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String insertSql = "INSERT INTO transactions (amount, date, note, category_id, wallet_id, transaction_type, source, payment_method, is_recurring, recurring_period, passed_periods) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
              
@@ -115,12 +229,28 @@ public class TransactionDAO {
             if (t instanceof Income) {
                 pstmt.setString(7, ((Income) t).getSource());
                 pstmt.setNull(8, Types.VARCHAR);
+                pstmt.setBoolean(9, false);
+                pstmt.setNull(10, Types.VARCHAR);
+                pstmt.setInt(11, 0);
+            } else if (t instanceof core.transaction.RecurringExpense) {
+                core.transaction.RecurringExpense re = (core.transaction.RecurringExpense) t;
+                pstmt.setNull(7, Types.VARCHAR);
+                pstmt.setString(8, re.getPaymentMethod());
+                pstmt.setBoolean(9, true);
+                pstmt.setString(10, re.getPeriod().toString()); // e.g. P1M
+                pstmt.setInt(11, re.getPassedPeriods());
             } else if (t instanceof Expense) {
                 pstmt.setNull(7, Types.VARCHAR);
                 pstmt.setString(8, ((Expense) t).getPaymentMethod());
+                pstmt.setBoolean(9, false);
+                pstmt.setNull(10, Types.VARCHAR);
+                pstmt.setInt(11, 0);
             } else {
                 pstmt.setNull(7, Types.VARCHAR);
                 pstmt.setNull(8, Types.VARCHAR);
+                pstmt.setBoolean(9, false);
+                pstmt.setNull(10, Types.VARCHAR);
+                pstmt.setInt(11, 0);
             }
             
             pstmt.executeUpdate();
@@ -148,7 +278,7 @@ public class TransactionDAO {
     }
 
     public void updateTransaction(Transaction t, int walletId) {
-        String updateSql = "UPDATE transactions SET amount = ?, date = ?, note = ?, category_id = ?, transaction_type = ?, source = ?, payment_method = ? WHERE id = ?";
+        String updateSql = "UPDATE transactions SET amount = ?, date = ?, note = ?, category_id = ?, transaction_type = ?, source = ?, payment_method = ?, is_recurring = ?, recurring_period = ?, passed_periods = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
              
@@ -163,14 +293,30 @@ public class TransactionDAO {
             if (t instanceof Income) {
                 pstmt.setString(6, ((Income) t).getSource());
                 pstmt.setNull(7, Types.VARCHAR);
+                pstmt.setBoolean(8, false);
+                pstmt.setNull(9, Types.VARCHAR);
+                pstmt.setInt(10, 0);
+            } else if (t instanceof core.transaction.RecurringExpense) {
+                core.transaction.RecurringExpense re = (core.transaction.RecurringExpense) t;
+                pstmt.setNull(6, Types.VARCHAR);
+                pstmt.setString(7, re.getPaymentMethod());
+                pstmt.setBoolean(8, true);
+                pstmt.setString(9, re.getPeriod().toString());
+                pstmt.setInt(10, re.getPassedPeriods());
             } else if (t instanceof Expense) {
                 pstmt.setNull(6, Types.VARCHAR);
                 pstmt.setString(7, ((Expense) t).getPaymentMethod());
+                pstmt.setBoolean(8, false);
+                pstmt.setNull(9, Types.VARCHAR);
+                pstmt.setInt(10, 0);
             } else {
                 pstmt.setNull(6, Types.VARCHAR);
                 pstmt.setNull(7, Types.VARCHAR);
+                pstmt.setBoolean(8, false);
+                pstmt.setNull(9, Types.VARCHAR);
+                pstmt.setInt(10, 0);
             }
-            pstmt.setInt(8, t.getId());
+            pstmt.setInt(11, t.getId());
             
             pstmt.executeUpdate();
             
@@ -213,7 +359,18 @@ public class TransactionDAO {
                         t = new Income(id, amount, date, note, cat, wallet, source != null ? source : "Unknown");
                     } else {
                         String method = rs.getString("payment_method");
-                        t = new Expense(id, amount, date, note, cat, wallet, method != null ? method : "Cash");
+                        method = method != null ? method : "Cash";
+                        boolean isRecurring = rs.getBoolean("is_recurring");
+                        if (isRecurring) {
+                            String p = rs.getString("recurring_period");
+                            java.time.Period period = p != null ? java.time.Period.parse(p) : java.time.Period.ofMonths(1);
+                            core.transaction.RecurringExpense re = new core.transaction.RecurringExpense(id, amount, date, note, cat, wallet, method, period);
+                            int passedPeriods = rs.getInt("passed_periods");
+                            re.setPassedPeriods(passedPeriods);
+                            t = re;
+                        } else {
+                            t = new Expense(id, amount, date, note, cat, wallet, method);
+                        }
                     }
                     transactions.add(t);
                 }
@@ -223,8 +380,41 @@ public class TransactionDAO {
             System.err.println("Error loading transactions: " + e.getMessage());
         }
         
+        processRecurringExpenses(transactions, wallet.getId());
+        
         wallet.setBalance(originalBalance); // Restore original balance to prevent double counting
         
         return transactions;
     }
+
+    private void processRecurringExpenses(List<Transaction> transactions, int walletId) {
+        List<Transaction> newExpenses = new ArrayList<>();
+        for (Transaction t : transactions) {
+            if (t instanceof core.transaction.RecurringExpense) {
+                core.transaction.RecurringExpense re = (core.transaction.RecurringExpense) t;
+                int oldPassed = re.getPassedPeriods();
+                re.nextDueDate(); // updates passedPeriods internally
+                int newPassed = re.getPassedPeriods();
+                
+                if (newPassed > oldPassed) {
+                    for (int i = oldPassed + 1; i <= newPassed; i++) {
+                        java.time.LocalDate generatedDate = re.getDate().plus(re.getPeriod().multipliedBy(i));
+                        Expense newExpense = new Expense(0, re.getAmount(), generatedDate, 
+                            re.getNote() + " (Auto-generated)", re.getCategory(), re.getWallet(), re.getPaymentMethod());
+                        newExpenses.add(newExpense);
+                    }
+                    // Update the RecurringExpense in DB
+                    updateTransaction(re, walletId);
+                }
+            }
+        }
+        
+        for (Transaction newExp : newExpenses) {
+            saveTransaction(newExp, walletId);
+            transactions.add(newExp);
+        }
+    }
 }
+
+
+

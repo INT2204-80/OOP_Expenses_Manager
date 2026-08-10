@@ -92,10 +92,9 @@
                     <Region HBox.hgrow="ALWAYS" />
                     <!-- Date Range Selector -->
                     <HBox styleClass="date-selector" alignment="CENTER" spacing="10">
-                        <Button text="&lt;" styleClass="date-btn"/>
-                        <Label text="Aug 01, 2026 - Aug 31, 2026" styleClass="date-text"/>
-                        <SVGPath content="M19,4h-1V2h-2v2H8V2H6v2H5C3.89,4,3.01,4.9,3.01,6L3,20c0,1.1,0.89,2,2,2h14c1.1,0,2-0.9,2-2V6C21,4.9,20.1,4,19,4z M19,20H5V10h14V20z M19,8H5V6h14V8z" fill="#a0aec0" scaleX="0.65" scaleY="0.65"/>
-                        <Button text="&gt;" styleClass="date-btn"/>
+                        <Button text="&lt;" onAction="#handlePrevPeriod" styleClass="date-btn"/>
+                        <HBox alignment="CENTER" spacing="5" onMouseClicked="#handleCustomPeriod" style="-fx-cursor: hand;"><Label fx:id="periodLabel" text="Aug 01, 2026 - Aug 31, 2026" styleClass="date-text" style="-fx-cursor: hand;"/><SVGPath content="M19,4h-1V2h-2v2H8V2H6v2H5C3.89,4,3.01,4.9,3.01,6L3,20c0,1.1,0.89,2,2,2h14c1.1,0,2-0.9,2-2V6C21,4.9,20.1,4,19,4z M19,20H5V10h14V20z M19,8H5V6h14V8z" fill="#a0aec0" scaleX="0.65" scaleY="0.65"/></HBox>
+                        <Button text="&gt;" onAction="#handleNextPeriod" styleClass="date-btn"/>
                     </HBox>
                 </HBox>
 
@@ -139,9 +138,12 @@
             <padding>
                 <Insets right="30" bottom="30"/>
             </padding>
-            <Button text="(?) Trợ giúp" styleClass="fab-help"/>
+
         </HBox>
     </bottom>
 
 </BorderPane>
+
+
+
 
