@@ -12,6 +12,9 @@
 <?import javafx.scene.shape.SVGPath?>
 <?import javafx.scene.text.Text?>
 
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.effect.ColorAdjust?>
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="expensemanager.ui.DashboardController"
             styleClass="dashboard-container" stylesheets="@../css/dashboard.css">
@@ -20,13 +23,16 @@
     <top>
         <HBox styleClass="top-bar" alignment="CENTER" spacing="20">
             <!-- Logo area -->
-            <HBox alignment="CENTER_LEFT" spacing="8">
-                <!-- Spendee colored circle logo -->
-                <StackPane>
-                    <Circle radius="12" styleClass="logo-circle"/>
-                    <Label text="S" styleClass="logo-s-text"/>
-                </StackPane>
-                <Label text="Spendee" styleClass="logo-text"/>
+            <HBox alignment="CENTER_LEFT" spacing="8" style="-fx-padding: 0 0 0 10;">
+                <!-- App logo -->
+                <ImageView fitHeight="45" preserveRatio="true">
+                    <image>
+                        <Image url="@../images/logo.png" />
+                    </image>
+                    <effect>
+                        <ColorAdjust brightness="-0.8" />
+                    </effect>
+                </ImageView>
             </HBox>
 
             <Region HBox.hgrow="ALWAYS" />
@@ -36,7 +42,7 @@
                 <VBox alignment="CENTER" styleClass="nav-item-active-container">
                     <Label text="Dashboard" styleClass="nav-item"/>
                 </VBox>
-                <VBox alignment="CENTER" styleClass="nav-item-container">
+                <VBox alignment="CENTER" styleClass="nav-item-container" onMouseClicked="#handleNavigateToBudgets">
                     <Label text="Budgets" styleClass="nav-item"/>
                 </VBox>
             </HBox>
@@ -138,3 +144,4 @@
     </bottom>
 
 </BorderPane>
+

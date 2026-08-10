@@ -9,8 +9,10 @@ import core.WalletType;
  * nhu nap tien, rut tien va lay loai vi.
  */
 public abstract class Wallet {
+    private int id;
     private String name;
     private double balance = 0.0;
+    private java.util.List<core.transaction.Transaction> transactions = new java.util.ArrayList<>();
 
     /**
      * Khoi tao mot vi voi ten va so du ban dau.
@@ -22,6 +24,22 @@ public abstract class Wallet {
     public Wallet(String name, double balance) {
         this.name = name;
         this.balance = validateAmount(balance);
+    }
+
+    public java.util.List<core.transaction.Transaction> getTransactions() {
+        return transactions;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void addTransaction(core.transaction.Transaction transaction) {
+        this.transactions.add(transaction);
     }
 
     /**

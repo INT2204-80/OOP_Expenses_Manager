@@ -12,6 +12,9 @@
 <?import javafx.scene.shape.SVGPath?>
 <?import javafx.scene.text.Text?>
 
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.effect.ColorAdjust?>
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="expensemanager.ui.WalletViewController"
             styleClass="dashboard-container" stylesheets="@../css/dashboard.css">
@@ -20,11 +23,15 @@
     <top>
         <HBox styleClass="top-bar" alignment="CENTER" spacing="20">
             <!-- Logo area (Clickable to go back) -->
-            <HBox alignment="CENTER_LEFT" spacing="8" onMouseClicked="#handleBackToDashboard" style="-fx-cursor: hand;">
-                <StackPane>
-                    <Circle radius="12" styleClass="logo-circle"/>
-                    <Label text="S" styleClass="logo-s-text"/>
-                </StackPane>
+            <HBox alignment="CENTER_LEFT" spacing="8" onMouseClicked="#handleBackToDashboard" style="-fx-cursor: hand; -fx-padding: 0 0 0 10;">
+                <ImageView fitHeight="45" preserveRatio="true">
+                    <image>
+                        <Image url="@../images/logo.png" />
+                    </image>
+                    <effect>
+                        <ColorAdjust brightness="-0.8" />
+                    </effect>
+                </ImageView>
                 <Label text="&gt;" style="-fx-text-fill: #a0aec0; -fx-font-weight: bold;"/>
                 <Label fx:id="walletNameTopLabel" text="Ví tiền mặt" styleClass="logo-text"/>
             </HBox>
@@ -107,8 +114,15 @@
                             <Label text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
                         </VBox>
                     </HBox>
+                    <!-- TRANSACTIONS LIST -->
+                    <javafx.scene.control.ScrollPane fx:id="transactionsScrollPane" fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS" visible="false" managed="false">
+                        <VBox fx:id="transactionsListContainer" spacing="10">
+                            <!-- Transactions will be added here dynamically -->
+                        </VBox>
+                    </javafx.scene.control.ScrollPane>
+
                     <!-- EMPTY STATE (Wallet with flying money) -->
-                    <VBox alignment="CENTER" VBox.vgrow="ALWAYS" spacing="20" styleClass="empty-state-area">
+                    <VBox fx:id="emptyTransactionsState" alignment="CENTER" VBox.vgrow="ALWAYS" spacing="20" styleClass="empty-state-area">
                         <StackPane>
                             <!-- Background money bill flying -->
                             <SVGPath content="M4 6h16v12H4z" fill="white" stroke="#e2e8f0" strokeWidth="2" rotate="-30" translateX="30" translateY="-20"/>
@@ -132,7 +146,6 @@
                     <HBox alignment="CENTER_LEFT" spacing="15">
                         <Button text="+ Add transaction" styleClass="solid-button" onAction="#showAddTransactionDialog"/>
                         <Region HBox.hgrow="ALWAYS" />
-                        <!-- Date Range Selector -->
                         <HBox styleClass="date-selector" alignment="CENTER" spacing="10">
                             <Button text="&lt;" styleClass="date-btn"/>
                             <Label text="Aug 01, 2026 - Aug 31, 2026" styleClass="date-text"/>
@@ -140,6 +153,50 @@
                             <Button text="&gt;" styleClass="date-btn"/>
                         </HBox>
                     </HBox>
+
+                    <!-- Filters Section -->
+                    <VBox spacing="10">
+                        <HBox alignment="CENTER_LEFT">
+                            <Label text="Filters" styleClass="filters-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="Reset filters" styleClass="filters-reset"/>
+                        </HBox>
+                        <HBox spacing="20">
+                            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                                <Label text="By category" styleClass="settings-field-label"/>
+                                <HBox styleClass="filter-box" alignment="CENTER_LEFT" spacing="10">
+                                    <Circle radius="10" fill="#718096"/>
+                                    <Label text="All categories" style="-fx-text-fill: #4a5568;"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Label text="▼" style="-fx-text-fill: #cbd5e0; -fx-font-size: 10px;"/>
+                                </HBox>
+                            </VBox>
+                            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                                <Label text="By people" styleClass="settings-field-label"/>
+                                <HBox styleClass="filter-box" alignment="CENTER_LEFT" spacing="10">
+                                    <Circle radius="10" fill="#2d3748"/>
+                                    <Label text="Admin" style="-fx-text-fill: #4a5568;"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Label text="▼" style="-fx-text-fill: #cbd5e0; -fx-font-size: 10px;"/>
+                                </HBox>
+                            </VBox>
+                            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                                <Label text="By note" styleClass="settings-field-label"/>
+                                <javafx.scene.control.TextField promptText="Filter by specific keyword" styleClass="filter-box"/>
+                            </VBox>
+                            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                                <Label text="By amount" styleClass="settings-field-label"/>
+                                <VBox spacing="5">
+                                    <javafx.scene.control.Slider min="-300000" max="5000000" value="5000000" showTickMarks="false" showTickLabels="false" styleClass="filter-slider"/>
+                                    <HBox>
+                                        <Label text="-300000" style="-fx-text-fill: #a0aec0; -fx-font-size: 11px;"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Label text="5000000" style="-fx-text-fill: #a0aec0; -fx-font-size: 11px;"/>
+                                    </HBox>
+                                </VBox>
+                            </VBox>
+                        </HBox>
+                    </VBox>
 
                     <!-- 4 Summary Cards -->
                     <HBox spacing="20" alignment="CENTER_LEFT">
@@ -150,30 +207,93 @@
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label text="Total Period Change" styleClass="summary-card-title"/>
-                            <Label text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                            <Label fx:id="overviewChangeLabel" text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
                         </VBox>
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label text="Total Period Expenses" styleClass="summary-card-title"/>
-                            <Label text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                            <Label fx:id="overviewExpenseLabel" text="0.00 VND" styleClass="summary-card-value" style="-fx-text-fill: #ef4444;"/>
                         </VBox>
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label text="Total Period Income" styleClass="summary-card-title"/>
-                            <Label text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                            <Label fx:id="overviewIncomeLabel" text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
                         </VBox>
                     </HBox>
 
-                    <VBox alignment="CENTER" VBox.vgrow="ALWAYS" spacing="20" styleClass="empty-state-area">
-                        <!-- Chart / Document Icon -->
-                        <StackPane>
-                            <SVGPath content="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="white" stroke="#e2e8f0" strokeWidth="1" scaleX="3.5" scaleY="3.5" rotate="-15" translateX="-20" translateY="10"/>
-                            <SVGPath content="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 8.5c2.5 0 4.5 2 4.5 4.5s-2 4.5-4.5 4.5-4.5-2-4.5-4.5 2-4.5 4.5-4.5zm0 2c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5z" fill="white" stroke="#cbd5e0" strokeWidth="1" scaleX="3.5" scaleY="3.5" rotate="10" translateX="10" translateY="-10"/>
-                        </StackPane>
-                        <Label text="You have no transactions." styleClass="empty-state-text">
-                            <padding><Insets top="30"/></padding>
-                        </Label>
-                    </VBox>
+                    <!-- CHARTS ROW 1: Account Balance & Changes -->
+                    <HBox spacing="20">
+                        <!-- Account Balance -->
+                        <VBox styleClass="chart-card" HBox.hgrow="ALWAYS">
+                            <HBox alignment="CENTER_LEFT">
+                                <VBox>
+                                    <Label text="Account Balance" styleClass="chart-title"/>
+                                    <Label text="Aug 01-31" styleClass="chart-subtitle"/>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <HBox styleClass="chart-toggles">
+                                    <Label fx:id="balDaysLbl" text="Days" styleClass="chart-toggle-active" onMouseClicked="#handleBalDays"/>
+                                    <Label fx:id="balWeeksLbl" text="Weeks" styleClass="chart-toggle" onMouseClicked="#handleBalWeeks"/>
+                                    <Label fx:id="balMonthsLbl" text="Months" styleClass="chart-toggle" onMouseClicked="#handleBalMonths"/>
+                                </HBox>
+                            </HBox>
+                            <javafx.scene.chart.AreaChart fx:id="balanceChart" legendVisible="false" createSymbols="true" prefHeight="250">
+                                <xAxis><javafx.scene.chart.CategoryAxis/></xAxis>
+                                <yAxis><javafx.scene.chart.NumberAxis autoRanging="true"/></yAxis>
+                            </javafx.scene.chart.AreaChart>
+                        </VBox>
+                        
+                        <!-- Changes -->
+                        <VBox styleClass="chart-card" HBox.hgrow="ALWAYS">
+                            <HBox alignment="CENTER_LEFT">
+                                <VBox>
+                                    <Label text="Changes" styleClass="chart-title"/>
+                                    <Label text="Aug 01-31" styleClass="chart-subtitle"/>
+                                </VBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <HBox styleClass="chart-toggles">
+                                    <Label fx:id="chgDaysLbl" text="Days" styleClass="chart-toggle-active" onMouseClicked="#handleChgDays"/>
+                                    <Label fx:id="chgWeeksLbl" text="Weeks" styleClass="chart-toggle" onMouseClicked="#handleChgWeeks"/>
+                                    <Label fx:id="chgMonthsLbl" text="Months" styleClass="chart-toggle" onMouseClicked="#handleChgMonths"/>
+                                </HBox>
+                            </HBox>
+                            <javafx.scene.chart.StackedBarChart fx:id="changesChart" legendVisible="false" categoryGap="8" prefHeight="250">
+                                <xAxis><javafx.scene.chart.CategoryAxis animated="false" tickLabelsVisible="false" tickMarkVisible="false" /></xAxis>
+                                <yAxis><javafx.scene.chart.NumberAxis animated="false" side="LEFT" tickLabelFill="#94a3b8" style="-fx-tick-label-font-size: 9px;"/></yAxis>
+                            </javafx.scene.chart.StackedBarChart>
+                        </VBox>
+                    </HBox>
+
+                    <!-- CHARTS ROW 2: Period Income & Period Expenses -->
+                    <HBox spacing="20">
+                        <!-- Period Income -->
+                        <VBox styleClass="chart-card" HBox.hgrow="ALWAYS">
+                            <VBox>
+                                <Label text="Period Income" styleClass="chart-title"/>
+                                <Label text="Aug 01-31" styleClass="chart-subtitle"/>
+                            </VBox>
+                            
+                            <StackPane prefHeight="250">
+                                <javafx.scene.chart.PieChart fx:id="incomePieChart" legendVisible="false" labelsVisible="false"/>
+                                <Circle radius="60" fill="white"/>
+                            </StackPane>
+                            <VBox fx:id="incomeLegendBox" spacing="10" style="-fx-padding: 10 0 0 0;"/>
+                        </VBox>
+                        
+                        <!-- Period Expenses -->
+                        <VBox styleClass="chart-card" HBox.hgrow="ALWAYS">
+                            <VBox>
+                                <Label text="Period Expenses" styleClass="chart-title"/>
+                                <Label text="Aug 01-31" styleClass="chart-subtitle"/>
+                            </VBox>
+                            
+                            <StackPane prefHeight="250">
+                                <javafx.scene.chart.PieChart fx:id="expensePieChart" legendVisible="false" labelsVisible="false"/>
+                                <Circle radius="60" fill="white"/>
+                            </StackPane>
+                            <VBox fx:id="expenseLegendBox" spacing="10" style="-fx-padding: 10 0 0 0;"/>
+                        </VBox>
+                    </HBox>
                 </VBox>
 
                 <!-- BUDGETS TAB -->
@@ -270,11 +390,15 @@
                                 </VBox>
                                 <VBox spacing="5" HBox.hgrow="ALWAYS">
                                     <Label text="Name" styleClass="settings-field-label"/>
-                                    <javafx.scene.control.TextField promptText="New category name" styleClass="settings-textfield"/>
+                                    <javafx.scene.control.TextField fx:id="newCategoryNameField" promptText="New category name" styleClass="settings-textfield"/>
                                 </VBox>
                                 <VBox spacing="5">
                                     <Label text="Type" styleClass="settings-field-label"/>
                                     <javafx.scene.control.ComboBox fx:id="categoryTypeCombo" styleClass="settings-combo" prefWidth="120" promptText="Expense"/>
+                                </VBox>
+                                <VBox spacing="5">
+                                    <Label text="" /> <!-- Spacer for alignment -->
+                                    <Button text="Create category" onAction="#handleCreateCategory" styleClass="create-category-btn" style="-fx-background-color: #e2e8f0; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-padding: 7 16; -fx-background-radius: 4; -fx-cursor: hand;" />
                                 </VBox>
                             </HBox>
 
@@ -286,45 +410,13 @@
                             </HBox>
 
                             <Label text="Income categories" style="-fx-font-weight: bold; -fx-text-fill: #4a5568;"/>
-                            <VBox spacing="10">
-                                <!-- Mock Items -->
-                                <HBox alignment="CENTER_LEFT" spacing="15" styleClass="category-list-item">
-                                    <Circle radius="12" fill="#4ade80"/>
-                                    <Label text="Lương" styleClass="category-list-name"/>
-                                    <Region HBox.hgrow="ALWAYS"/>
-                                    <Label text="0 transactions" styleClass="category-list-count"/>
-                                    <Label text="⚙" styleClass="category-list-action"/>
-                                    <Label text="🗑" styleClass="category-list-action-danger"/>
-                                </HBox>
-                                <HBox alignment="CENTER_LEFT" spacing="15" styleClass="category-list-item">
-                                    <Circle radius="12" fill="#facc15"/>
-                                    <Label text="Kinh doanh" styleClass="category-list-name"/>
-                                    <Region HBox.hgrow="ALWAYS"/>
-                                    <Label text="0 transactions" styleClass="category-list-count"/>
-                                    <Label text="⚙" styleClass="category-list-action"/>
-                                    <Label text="🗑" styleClass="category-list-action-danger"/>
-                                </HBox>
+                            <VBox fx:id="incomeCategoriesContainer" spacing="10">
+                                <!-- Dynamic Items -->
                             </VBox>
 
                             <Label text="Expense categories" style="-fx-font-weight: bold; -fx-text-fill: #4a5568;"/>
-                            <VBox spacing="10">
-                                <!-- Mock Items -->
-                                <HBox alignment="CENTER_LEFT" spacing="15" styleClass="category-list-item">
-                                    <Circle radius="12" fill="#fb923c"/>
-                                    <Label text="Đồ ăn &amp; Đồ uống" styleClass="category-list-name"/>
-                                    <Region HBox.hgrow="ALWAYS"/>
-                                    <Label text="0 transactions" styleClass="category-list-count"/>
-                                    <Label text="⚙" styleClass="category-list-action"/>
-                                    <Label text="🗑" styleClass="category-list-action-danger"/>
-                                </HBox>
-                                <HBox alignment="CENTER_LEFT" spacing="15" styleClass="category-list-item">
-                                    <Circle radius="12" fill="#f472b6"/>
-                                    <Label text="Mua sắm" styleClass="category-list-name"/>
-                                    <Region HBox.hgrow="ALWAYS"/>
-                                    <Label text="0 transactions" styleClass="category-list-count"/>
-                                    <Label text="⚙" styleClass="category-list-action"/>
-                                    <Label text="🗑" styleClass="category-list-action-danger"/>
-                                </HBox>
+                            <VBox fx:id="expenseCategoriesContainer" spacing="10">
+                                <!-- Dynamic Items -->
                             </VBox>
                         </VBox>
                     </StackPane>
@@ -344,3 +436,4 @@
     </bottom>
 
 </BorderPane>
+

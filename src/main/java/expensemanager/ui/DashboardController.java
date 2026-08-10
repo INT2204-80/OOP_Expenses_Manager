@@ -39,7 +39,9 @@ public class DashboardController {
         
         // If no wallets exist, display a dummy one to match the exact Spendee mockup
         if (wallets.isEmpty()) {
-            wallets.add(new CashWallet("Ví tiền mặt", 0.0));
+            Wallet defaultWallet = new CashWallet("Ví tiền mặt", 0.0);
+            walletDAO.addWallet(defaultWallet);
+            wallets = walletDAO.getAllWallets();
         }
 
         double totalBalance = 0;
@@ -80,12 +82,17 @@ public class DashboardController {
         Label nameLbl = new Label(w.getName());
         nameLbl.getStyleClass().add("wallet-name");
 
-        String typeStr = "Cash";
+        String typeStr = "Cash Wallet";
         if (w instanceof BankAccount) {
-            typeStr = ((BankAccount)w).getBankName();
+            BankAccount ba = (BankAccount) w;
+            typeStr = "Bank Account (" + (ba.getBankName() != null ? ba.getBankName() : "") + ")";
+        } else if (w instanceof core.wallet.EWallet) {
+            core.wallet.EWallet ew = (core.wallet.EWallet) w;
+            typeStr = "E-Wallet (" + (ew.getProvider() != null ? ew.getProvider() : "") + ")";
         }
         Label typeLbl = new Label(typeStr);
         typeLbl.getStyleClass().add("wallet-type");
+        typeLbl.setStyle("-fx-text-fill: #a0aec0; -fx-font-size: 11px;");
 
         Label balLbl = new Label(String.format("%,.2f VND", w.getBalance()));
         balLbl.getStyleClass().add("wallet-balance");
@@ -93,7 +100,24 @@ public class DashboardController {
         details.getChildren().addAll(nameLbl, typeLbl, balLbl);
         VBox.setMargin(details, new Insets(0, 0, 0, 10));
 
-        card.getChildren().addAll(icon, details);
+        // Delete button
+        Button deleteBtn = new Button("🗑");
+        deleteBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #ef4444; -fx-cursor: hand; -fx-font-size: 16px;");
+        deleteBtn.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this wallet and all its transactions?", ButtonType.YES, ButtonType.NO);
+            confirm.showAndWait().ifPresent(res -> {
+                if (res == ButtonType.YES) {
+                    walletDAO.deleteWallet(w.getId());
+                    refreshWallets();
+                }
+            });
+            e.consume(); // Prevent triggering the card click
+        });
+
+        javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
+        HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+
+        card.getChildren().addAll(icon, details, spacer, deleteBtn);
 
         // Navigation logic: Click on wallet card to open WalletView
         card.setOnMouseClicked(event -> {
@@ -104,7 +128,7 @@ public class DashboardController {
                 controller.initData(w);
                 
                 javafx.stage.Stage stage = (javafx.stage.Stage) card.getScene().getWindow();
-                stage.setScene(new javafx.scene.Scene(root, 1000, 700));
+                stage.getScene().setRoot(root);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -118,33 +142,89 @@ public class DashboardController {
     public void handleAddWallet() {
         Dialog<Wallet> dialog = new Dialog<>();
         dialog.setTitle("Add New Wallet");
-        dialog.setHeaderText("Create a new Cash Wallet");
+        dialog.setHeaderText("Create a new Wallet");
 
         ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
+        VBox content = new VBox(15);
+        content.setPadding(new Insets(20, 50, 10, 10));
+
+        ComboBox<String> typeCombo = new ComboBox<>();
+        typeCombo.getItems().addAll("Cash Wallet", "Bank Account", "E-Wallet");
+        typeCombo.setValue("Cash Wallet");
+        typeCombo.setStyle("-fx-font-size: 14px;");
+
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new Insets(20, 150, 10, 10));
 
-        TextField name = new TextField("Ví tiền mặt");
-        name.setPromptText("Wallet Name");
+        TextField name = new TextField();
+        name.setPromptText("Wallet Name (e.g. My Bank, Momo...)");
         TextField balance = new TextField("0");
         balance.setPromptText("Initial Balance (VND)");
+        
+        TextField bankName = new TextField();
+        bankName.setPromptText("Bank Name");
+        TextField accNumber = new TextField();
+        accNumber.setPromptText("Account Number");
+        
+        TextField provider = new TextField();
+        provider.setPromptText("Provider (Momo, ZaloPay, etc.)");
+
+        Label bankNameLbl = new Label("Bank Name:");
+        Label accNumLbl = new Label("Account Num:");
+        Label providerLbl = new Label("Provider:");
 
         grid.add(new Label("Name:"), 0, 0);
         grid.add(name, 1, 0);
         grid.add(new Label("Balance:"), 0, 1);
         grid.add(balance, 1, 1);
+        
+        grid.add(bankNameLbl, 0, 2);
+        grid.add(bankName, 1, 2);
+        grid.add(accNumLbl, 0, 3);
+        grid.add(accNumber, 1, 3);
+        
+        grid.add(providerLbl, 0, 4);
+        grid.add(provider, 1, 4);
 
-        dialog.getDialogPane().setContent(grid);
+        Runnable updateVisibility = () -> {
+            String sel = typeCombo.getValue();
+            boolean isBank = "Bank Account".equals(sel);
+            boolean isEWallet = "E-Wallet".equals(sel);
+
+            bankNameLbl.setVisible(isBank); bankNameLbl.setManaged(isBank);
+            bankName.setVisible(isBank); bankName.setManaged(isBank);
+            accNumLbl.setVisible(isBank); accNumLbl.setManaged(isBank);
+            accNumber.setVisible(isBank); accNumber.setManaged(isBank);
+
+            providerLbl.setVisible(isEWallet); providerLbl.setManaged(isEWallet);
+            provider.setVisible(isEWallet); provider.setManaged(isEWallet);
+            
+            if (dialog.getDialogPane().getScene() != null && dialog.getDialogPane().getScene().getWindow() != null) {
+                dialog.getDialogPane().getScene().getWindow().sizeToScene();
+            }
+        };
+
+        typeCombo.setOnAction(e -> updateVisibility.run());
+        updateVisibility.run();
+
+        content.getChildren().addAll(new Label("Wallet Type:"), typeCombo, grid);
+        dialog.getDialogPane().setContent(content);
 
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
                 try {
                     double bal = Double.parseDouble(balance.getText());
-                    return new CashWallet(name.getText(), bal);
+                    String type = typeCombo.getValue();
+                    if ("Bank Account".equals(type)) {
+                        return new core.wallet.BankAccount(name.getText(), bal, bankName.getText(), accNumber.getText());
+                    } else if ("E-Wallet".equals(type)) {
+                        return new core.wallet.EWallet(name.getText(), bal, provider.getText());
+                    } else {
+                        return new core.wallet.CashWallet(name.getText(), bal);
+                    }
                 } catch (NumberFormatException e) {
                     System.err.println("Invalid balance format.");
                     return null;
@@ -212,5 +292,19 @@ public class DashboardController {
             walletDAO.addWallet(wallet);
             refreshWallets();
         });
+    }
+    
+    @FXML
+    private void handleNavigateToBudgets() {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/BudgetsView.fxml"));
+            javafx.scene.Parent root = loader.load();
+            
+            // Get current stage and set new scene
+            javafx.scene.Scene scene = walletsContainer.getScene();
+            scene.setRoot(root);
+        } catch (java.io.IOException e) {
+            e.printStackTrace();
+        }
     }
 }

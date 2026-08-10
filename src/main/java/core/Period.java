@@ -1,8 +1,10 @@
 package core;
 
 public enum Period {
+    ONCE("Một lần", 0, 0, 0),
     DAILY("Hàng ngày", 0, 0, 1),
     WEEKLY("Hàng tuần", 0, 0, 7),
+    BIWEEKLY("Hai tuần một lần", 0, 0, 14),
     MONTHLY("Hàng tháng", 0, 1, 0),
     YEARLY("Hàng năm", 1, 0, 0);
 
