@@ -1,27 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.layout.Region?>
-<?import javafx.scene.layout.StackPane?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.shape.Circle?>
-<?import javafx.scene.shape.SVGPath?>
-<?import javafx.scene.text.Text?>
-
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.effect.ColorAdjust?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.effect.ColorAdjust?>
-<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="expensemanager.ui.DashboardController"
-            styleClass="dashboard-container" stylesheets="@../css/dashboard.css">
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<BorderPane styleClass="dashboard-container" stylesheets="@../css/dashboard.css" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="expensemanager.ui.DashboardController">
     
     <!-- TOP NAVIGATION BAR -->
     <top>
-        <HBox styleClass="top-bar" alignment="CENTER" spacing="20">
+        <HBox alignment="CENTER" spacing="20" styleClass="top-bar">
             <!-- Logo area -->
             <HBox alignment="CENTER_LEFT" spacing="8" style="-fx-padding: 0 0 0 10;">
                 <!-- App logo -->
@@ -40,10 +37,10 @@
             <!-- Center Menu -->
             <HBox alignment="CENTER" spacing="30">
                 <VBox alignment="CENTER" styleClass="nav-item-active-container">
-                    <Label text="Dashboard" styleClass="nav-item"/>
+                    <Label styleClass="nav-item" text="Dashboard" />
                 </VBox>
-                <VBox alignment="CENTER" styleClass="nav-item-container" onMouseClicked="#handleNavigateToBudgets">
-                    <Label text="Budgets" styleClass="nav-item"/>
+                <VBox alignment="CENTER" onMouseClicked="#handleNavigateToBudgets" styleClass="nav-item-container">
+                    <Label styleClass="nav-item" text="Budgets" />
                 </VBox>
             </HBox>
 
@@ -51,11 +48,7 @@
 
             <!-- Profile area -->
             <HBox alignment="CENTER_RIGHT" spacing="10">
-                <StackPane>
-                    <Circle radius="16" fill="#e2e8f0"/>
-                    <SVGPath content="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#a0aec0" scaleX="0.8" scaleY="0.8"/>
-                </StackPane>
-                <Label text="Admin" styleClass="profile-name"/>
+                <StackPane />
             </HBox>
         </HBox>
     </top>
@@ -64,23 +57,22 @@
     <center>
         <VBox spacing="30" styleClass="content-area">
             <padding>
-                <Insets top="30" right="60" bottom="30" left="60"/>
+                <Insets bottom="30" left="60" right="60" top="30" />
             </padding>
 
             <!-- WALLETS SECTION -->
             <VBox spacing="15">
-                <Label text="Wallets" styleClass="section-title"/>
+                <Label styleClass="section-title" text="Wallets" />
                 <HBox spacing="20">
-                    <javafx.scene.control.ScrollPane vbarPolicy="NEVER" hbarPolicy="AS_NEEDED" styleClass="wallets-scrollpane" fitToHeight="true" prefHeight="130">
+                    <javafx.scene.control.ScrollPane fitToHeight="true" hbarPolicy="AS_NEEDED" prefHeight="130" styleClass="wallets-scrollpane" vbarPolicy="NEVER">
                         <HBox fx:id="walletsContainer" spacing="20">
                             <!-- Wallets will be injected here dynamically -->
                         </HBox>
                     </javafx.scene.control.ScrollPane>
 
                     <!-- Action Buttons -->
-                    <VBox spacing="10" alignment="CENTER_LEFT">
-                        <Button text="Add New Wallet" styleClass="outline-button" onAction="#handleAddWallet"/>
-                        <Button text="Connect a Bank Account" styleClass="outline-button" onAction="#handleConnectBank"/>
+                    <VBox alignment="CENTER_LEFT" spacing="10">
+                        <Button onAction="#handleAddWallet" styleClass="outline-button" text="Add New Wallet" />
                     </VBox>
                 </HBox>
             </VBox>
@@ -88,45 +80,45 @@
             <!-- OVERVIEW SECTION -->
             <VBox spacing="15">
                 <HBox alignment="CENTER_LEFT">
-                    <Label text="Overview" styleClass="section-title"/>
+                    <Label styleClass="section-title" text="Overview" />
                     <Region HBox.hgrow="ALWAYS" />
                     <!-- Date Range Selector -->
-                    <HBox styleClass="date-selector" alignment="CENTER" spacing="10">
-                        <Button text="&lt;" onAction="#handlePrevPeriod" styleClass="date-btn"/>
-                        <HBox alignment="CENTER" spacing="5" onMouseClicked="#handleCustomPeriod" style="-fx-cursor: hand;"><Label fx:id="periodLabel" text="Aug 01, 2026 - Aug 31, 2026" styleClass="date-text" style="-fx-cursor: hand;"/><SVGPath content="M19,4h-1V2h-2v2H8V2H6v2H5C3.89,4,3.01,4.9,3.01,6L3,20c0,1.1,0.89,2,2,2h14c1.1,0,2-0.9,2-2V6C21,4.9,20.1,4,19,4z M19,20H5V10h14V20z M19,8H5V6h14V8z" fill="#a0aec0" scaleX="0.65" scaleY="0.65"/></HBox>
-                        <Button text="&gt;" onAction="#handleNextPeriod" styleClass="date-btn"/>
+                    <HBox alignment="CENTER" spacing="10" styleClass="date-selector">
+                        <Button onAction="#handlePrevPeriod" styleClass="date-btn" text="&lt;" />
+                        <HBox alignment="CENTER" onMouseClicked="#handleCustomPeriod" spacing="5" style="-fx-cursor: hand;"><Label fx:id="periodLabel" style="-fx-cursor: hand;" styleClass="date-text" text="Aug 01, 2026 - Aug 31, 2026" /><SVGPath content="M19,4h-1V2h-2v2H8V2H6v2H5C3.89,4,3.01,4.9,3.01,6L3,20c0,1.1,0.89,2,2,2h14c1.1,0,2-0.9,2-2V6C21,4.9,20.1,4,19,4z M19,20H5V10h14V20z M19,8H5V6h14V8z" fill="#a0aec0" scaleX="0.65" scaleY="0.65" /></HBox>
+                        <Button onAction="#handleNextPeriod" styleClass="date-btn" text="&gt;" />
                     </HBox>
                 </HBox>
 
                 <!-- 4 Summary Cards -->
-                <HBox spacing="20" alignment="CENTER_LEFT">
+                <HBox alignment="CENTER_LEFT" spacing="20">
                     <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
-                        <Label text="Total Balance" styleClass="summary-card-title"/>
-                        <Label fx:id="totalBalanceLabel" text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                        <Label styleClass="summary-card-title" text="Total Balance" />
+                        <Label fx:id="totalBalanceLabel" styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
                     </VBox>
 
                     <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
-                        <Label text="Total Period Change" styleClass="summary-card-title"/>
-                        <Label fx:id="totalPeriodChangeLabel" text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                        <Label styleClass="summary-card-title" text="Total Period Change" />
+                        <Label fx:id="totalPeriodChangeLabel" styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
                     </VBox>
 
                     <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
-                        <Label text="Total Period Expenses" styleClass="summary-card-title"/>
-                        <Label fx:id="totalExpensesLabel" text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                        <Label styleClass="summary-card-title" text="Total Period Expenses" />
+                        <Label fx:id="totalExpensesLabel" styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
                     </VBox>
 
                     <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
-                        <Label text="Total Period Income" styleClass="summary-card-title"/>
-                        <Label fx:id="totalIncomeLabel" text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                        <Label styleClass="summary-card-title" text="Total Period Income" />
+                        <Label fx:id="totalIncomeLabel" styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
                     </VBox>
                 </HBox>
             </VBox>
 
             <!-- EMPTY STATE -->
-            <VBox alignment="CENTER" VBox.vgrow="ALWAYS" spacing="20" styleClass="empty-state-area">
-                <SVGPath content="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="#e2e8f0" scaleX="3.5" scaleY="3.5"/>
-                <Label text="You have no transactions." styleClass="empty-state-text">
-                    <padding><Insets top="30"/></padding>
+            <VBox alignment="CENTER" spacing="20" styleClass="empty-state-area" VBox.vgrow="ALWAYS">
+                <SVGPath content="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="#e2e8f0" scaleX="3.5" scaleY="3.5" />
+                <Label styleClass="empty-state-text" text="You have no transactions.">
+                    <padding><Insets top="30" /></padding>
                 </Label>
             </VBox>
         </VBox>
@@ -136,14 +128,10 @@
     <bottom>
         <HBox alignment="BOTTOM_RIGHT" pickOnBounds="false">
             <padding>
-                <Insets right="30" bottom="30"/>
+                <Insets bottom="30" right="30" />
             </padding>
 
         </HBox>
     </bottom>
 
 </BorderPane>
-
-
-
-
