@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS wallets (
     wallet_type ENUM('CASH', 'BANK', 'EWALLET') NOT NULL,
     bank_name VARCHAR(255),
     account_number VARCHAR(255),
-    provider VARCHAR(255)
+    provider VARCHAR(255),
+    currency VARCHAR(10) DEFAULT 'VND'
 );
 
 CREATE TABLE IF NOT EXISTS categories (

@@ -110,12 +110,17 @@ public class BudgetsViewController {
         double left = budget.getRemainingAmount();
         boolean exceed = budget.isExceed();
         
-        Label leftLabel = new Label(String.format("%,.2f VND %s", 
-                exceed ? (budget.getCurrentSpent() - budget.getLimitAmount()) : left, 
+        String curr = "VND";
+        core.storage.WalletDAO wDao = new core.storage.WalletDAO();
+        java.util.List<core.wallet.Wallet> ws = wDao.getAllWallets();
+        if (!ws.isEmpty()) curr = ws.get(0).getCurrency();
+        
+        Label leftLabel = new Label(String.format("%,.2f %s %s", 
+                exceed ? (budget.getCurrentSpent() - budget.getLimitAmount()) : left, curr,
                 exceed ? "exceeded" : "left"));
         leftLabel.getStyleClass().add(exceed ? "budget-amount-left-exceed" : "budget-amount-left");
         
-        Label fromLabel = new Label(String.format("From %,.2f VND", budget.getLimitAmount()));
+        Label fromLabel = new Label(String.format("From %,.2f %s", budget.getLimitAmount(), curr));
         fromLabel.getStyleClass().add("budget-amount-total");
         
         VBox amountBox = new VBox(2, leftLabel, fromLabel);

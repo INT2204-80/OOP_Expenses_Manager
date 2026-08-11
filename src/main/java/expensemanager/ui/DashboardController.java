@@ -60,7 +60,8 @@ public class DashboardController {
         }
 
         if (totalBalanceLabel != null) {
-            totalBalanceLabel.setText(String.format("%,.2f VND", totalBalance));
+            String defaultCurr = wallets.isEmpty() ? "VND" : wallets.get(0).getCurrency();
+            totalBalanceLabel.setText(String.format("%,.2f %s", totalBalance, defaultCurr));
         }
     }
 
@@ -99,7 +100,7 @@ public class DashboardController {
         typeLbl.getStyleClass().add("wallet-type");
         typeLbl.setStyle("-fx-text-fill: #a0aec0; -fx-font-size: 11px;");
 
-        Label balLbl = new Label(String.format("%,.2f VND", w.getBalance()));
+        Label balLbl = new Label(String.format("%,.2f %s", w.getBalance(), w.getCurrency()));
         balLbl.getStyleClass().add("wallet-balance");
 
         details.getChildren().addAll(nameLbl, typeLbl, balLbl);
@@ -166,8 +167,13 @@ public class DashboardController {
 
         TextField name = new TextField();
         name.setPromptText("Wallet Name (e.g. My Bank, Momo...)");
+        
+        ComboBox<String> currencyCombo = new ComboBox<>();
+        currencyCombo.getItems().addAll("VND", "USD");
+        currencyCombo.setValue("VND");
+        
         TextField balance = new TextField("0");
-        balance.setPromptText("Initial Balance (VND)");
+        balance.setPromptText("Initial Balance");
         
         TextField bankName = new TextField();
         bankName.setPromptText("Bank Name");
@@ -183,16 +189,18 @@ public class DashboardController {
 
         grid.add(new Label("Name:"), 0, 0);
         grid.add(name, 1, 0);
-        grid.add(new Label("Balance:"), 0, 1);
-        grid.add(balance, 1, 1);
+        grid.add(new Label("Currency:"), 0, 1);
+        grid.add(currencyCombo, 1, 1);
+        grid.add(new Label("Balance:"), 0, 2);
+        grid.add(balance, 1, 2);
         
-        grid.add(bankNameLbl, 0, 2);
-        grid.add(bankName, 1, 2);
-        grid.add(accNumLbl, 0, 3);
-        grid.add(accNumber, 1, 3);
+        grid.add(bankNameLbl, 0, 3);
+        grid.add(bankName, 1, 3);
+        grid.add(accNumLbl, 0, 4);
+        grid.add(accNumber, 1, 4);
         
-        grid.add(providerLbl, 0, 4);
-        grid.add(provider, 1, 4);
+        grid.add(providerLbl, 0, 5);
+        grid.add(provider, 1, 5);
 
         Runnable updateVisibility = () -> {
             String sel = typeCombo.getValue();
@@ -223,12 +231,13 @@ public class DashboardController {
                 try {
                     double bal = Double.parseDouble(balance.getText());
                     String type = typeCombo.getValue();
+                    String curr = currencyCombo.getValue();
                     if ("Bank Account".equals(type)) {
-                        return new core.wallet.BankAccount(name.getText(), bal, bankName.getText(), accNumber.getText());
+                        return new core.wallet.BankAccount(name.getText(), bal, curr, bankName.getText(), accNumber.getText());
                     } else if ("E-Wallet".equals(type)) {
-                        return new core.wallet.EWallet(name.getText(), bal, provider.getText());
+                        return new core.wallet.EWallet(name.getText(), bal, curr, provider.getText());
                     } else {
-                        return new core.wallet.CashWallet(name.getText(), bal);
+                        return new core.wallet.CashWallet(name.getText(), bal, curr);
                     }
                 } catch (NumberFormatException e) {
                     System.err.println("Invalid balance format.");
@@ -324,14 +333,19 @@ public class DashboardController {
             double expense = dao.getTotalAmountForPeriod("EXPENSE", currentPeriodStart, endDate);
             double change = income - expense;
 
-            if (totalIncomeLabel != null) totalIncomeLabel.setText(String.format("%,.2f VND", income));
-            if (totalExpensesLabel != null) totalExpensesLabel.setText(String.format("%,.2f VND", expense));
+            String curr = "VND";
+            if (walletDAO != null) {
+                java.util.List<Wallet> allW = walletDAO.getAllWallets();
+                if (!allW.isEmpty()) curr = allW.get(0).getCurrency();
+            }
+            if (totalIncomeLabel != null) totalIncomeLabel.setText(String.format("%,.2f %s", income, curr));
+            if (totalExpensesLabel != null) totalExpensesLabel.setText(String.format("%,.2f %s", expense, curr));
             if (totalPeriodChangeLabel != null) {
-                totalPeriodChangeLabel.setText(String.format("%,.2f VND", change));
-                if (change < 0) {
-                    totalPeriodChangeLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 24px; -fx-font-weight: bold;");
-                } else {
+                totalPeriodChangeLabel.setText(String.format("%,.2f %s", change, curr));
+                if (change >= 0) {
                     totalPeriodChangeLabel.setStyle("-fx-text-fill: #3b82f6; -fx-font-size: 24px; -fx-font-weight: bold;");
+                } else {
+                    totalPeriodChangeLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 24px; -fx-font-weight: bold;");
                 }
             }
         } catch (java.sql.SQLException e) {
@@ -355,8 +369,13 @@ public class DashboardController {
 
         TextField name = new TextField();
         name.setPromptText("Wallet Name");
+        
+        ComboBox<String> currencyCombo = new ComboBox<>();
+        currencyCombo.getItems().addAll("VND", "USD");
+        currencyCombo.setValue("VND");
+        
         TextField balance = new TextField();
-        balance.setPromptText("Initial Balance (VND)");
+        balance.setPromptText("Initial Balance");
         TextField bankName = new TextField();
         bankName.setPromptText("Bank Name (e.g. VCB)");
         TextField accNum = new TextField();
@@ -364,12 +383,14 @@ public class DashboardController {
 
         grid.add(new Label("Name:"), 0, 0);
         grid.add(name, 1, 0);
-        grid.add(new Label("Balance:"), 0, 1);
-        grid.add(balance, 1, 1);
-        grid.add(new Label("Bank Name:"), 0, 2);
-        grid.add(bankName, 1, 2);
-        grid.add(new Label("Account No:"), 0, 3);
-        grid.add(accNum, 1, 3);
+        grid.add(new Label("Currency:"), 0, 1);
+        grid.add(currencyCombo, 1, 1);
+        grid.add(new Label("Balance:"), 0, 2);
+        grid.add(balance, 1, 2);
+        grid.add(new Label("Bank Name:"), 0, 3);
+        grid.add(bankName, 1, 3);
+        grid.add(new Label("Account No:"), 0, 4);
+        grid.add(accNum, 1, 4);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -377,7 +398,8 @@ public class DashboardController {
             if (dialogButton == saveButtonType) {
                 try {
                     double bal = Double.parseDouble(balance.getText());
-                    return new BankAccount(name.getText(), bal, bankName.getText(), accNum.getText());
+                    String curr = currencyCombo.getValue();
+                    return new BankAccount(name.getText(), bal, curr, bankName.getText(), accNum.getText());
                 } catch (NumberFormatException e) {
                     System.err.println("Invalid balance format.");
                     return null;

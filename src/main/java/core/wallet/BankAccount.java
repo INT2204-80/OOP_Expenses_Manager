@@ -28,6 +28,17 @@ public class BankAccount extends Wallet {
         this.accountNumber = accountNumber;
     }
 
+    public BankAccount(
+            String name,
+            double balance,
+            String currency,
+            String bankName,
+            String accountNumber) {
+        super(name, balance, currency);
+        this.bankName = bankName;
+        this.accountNumber = accountNumber;
+    }
+
     /**
      * Lay ten ngan hang.
      *

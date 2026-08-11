@@ -32,6 +32,11 @@ public class EWallet extends Wallet {
         this.provider = provider;
     }
 
+    public EWallet(String name, double balance, String currency, String provider) {
+        super(name, balance, currency);
+        this.provider = provider;
+    }
+
     /**
      * Lay nha cung cap vi dien tu.
      *

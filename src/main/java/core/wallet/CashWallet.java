@@ -18,6 +18,10 @@ public class CashWallet extends Wallet {
         super(name, balance);
     }
 
+    public CashWallet(String name, double balance, String currency) {
+        super(name, balance, currency);
+    }
+
     /**
      * Rut tien mat khoi vi ma khong tinh phi.
      *

@@ -12,18 +12,33 @@ public abstract class Wallet {
     private int id;
     private String name;
     private double balance = 0.0;
+    private String currency = "VND";
     private java.util.List<core.transaction.Transaction> transactions = new java.util.ArrayList<>();
 
     /**
-     * Khoi tao mot vi voi ten va so du ban dau.
+     * Khoi tao mot vi voi ten, so du ban dau va loai tien.
      *
      * @param name ten cua vi
      * @param balance so du ban dau
+     * @param currency loai tien te (VND, USD, v.v.)
      * @throws IllegalArgumentException neu so du am, NaN hoac vo cuc
      */
-    public Wallet(String name, double balance) {
+    public Wallet(String name, double balance, String currency) {
         this.name = name;
         this.balance = validateAmount(balance);
+        this.currency = (currency == null || currency.trim().isEmpty()) ? "VND" : currency;
+    }
+
+    public Wallet(String name, double balance) {
+        this(name, balance, "VND");
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 
     public java.util.List<core.transaction.Transaction> getTransactions() {

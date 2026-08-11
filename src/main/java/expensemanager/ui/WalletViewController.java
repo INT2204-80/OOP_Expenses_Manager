@@ -11,7 +11,10 @@ import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 
 import java.io.IOException;
-
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import java.util.Optional;
+import core.storage.WalletDAO;
 public class WalletViewController {
 
     @FXML
@@ -58,6 +61,11 @@ public class WalletViewController {
     
     @FXML private Label periodLabelOverview;
     @FXML private Label periodLabelTrans;
+    @FXML private Label transChangeLabel;
+    @FXML private Label transExpenseLabel;
+    @FXML private Label transIncomeLabel;
+    
+    @FXML private Label deleteWalletLabel;
 
     public void initData(Wallet wallet) {
         this.currentWallet = wallet;
@@ -71,9 +79,10 @@ public class WalletViewController {
         }
         
         walletNameTopLabel.setText(wallet.getName());
-        currentBalanceLabel.setText(String.format("%,.2f VND", wallet.getBalance()));
+        String curr = wallet.getCurrency();
+        currentBalanceLabel.setText(String.format("%,.2f %s", wallet.getBalance(), curr));
         if (overviewBalanceLabel != null) {
-            overviewBalanceLabel.setText(String.format("%,.2f VND", wallet.getBalance()));
+            overviewBalanceLabel.setText(String.format("%,.2f %s", wallet.getBalance(), curr));
         }
         
         if (categoryIconCombo != null) {
@@ -246,7 +255,8 @@ public class WalletViewController {
             javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
             javafx.scene.layout.HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
             
-            Label amountLabel = new Label(String.format("%s%,.0f VND", isIncome ? "+" : "-", t.getAmount()));
+            String curr = currentWallet != null ? currentWallet.getCurrency() : "VND";
+            Label amountLabel = new Label(String.format("%s%,.0f %s", isIncome ? "+" : "-", t.getAmount(), curr));
             amountLabel.setStyle(String.format("-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: %s;", isIncome ? "#2563eb" : "#ef4444"));
             
             Button editBtn = new Button("Sửa");
@@ -285,8 +295,9 @@ public class WalletViewController {
             updateOverviewData();
             renderTransactions();
             
-            currentBalanceLabel.setText(String.format("%,.2f VND", currentWallet.getBalance()));
-            if (overviewBalanceLabel != null) overviewBalanceLabel.setText(String.format("%,.2f VND", currentWallet.getBalance()));
+            String curr = currentWallet.getCurrency();
+            currentBalanceLabel.setText(String.format("%,.2f %s", currentWallet.getBalance(), curr));
+            if (overviewBalanceLabel != null) overviewBalanceLabel.setText(String.format("%,.2f %s", currentWallet.getBalance(), curr));
         }
     }
     
@@ -304,12 +315,35 @@ public class WalletViewController {
         
         grid.add(new Label("Danh mục:"), 0, 0);
         javafx.scene.control.ComboBox<String> categoryCombo = new javafx.scene.control.ComboBox<>();
+        categoryCombo.getItems().add("--- CHI TIÊU (EXPENSE) ---");
         for (core.Category cat : allCategories) {
-            categoryCombo.getItems().add(cat.getName());
+            if (cat.getType() == core.TransactionType.EXPENSE) categoryCombo.getItems().add(cat.getName());
         }
-        if (!categoryCombo.getItems().isEmpty()) {
-            categoryCombo.getSelectionModel().select(oldT.getCategory().getName());
+        categoryCombo.getItems().add("--- THU NHẬP (INCOME) ---");
+        for (core.Category cat : allCategories) {
+            if (cat.getType() == core.TransactionType.INCOME) categoryCombo.getItems().add(cat.getName());
         }
+        categoryCombo.setCellFactory(lv -> new javafx.scene.control.ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setDisable(false);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (item.startsWith("---")) {
+                        setDisable(true);
+                        setStyle("-fx-font-weight: bold; -fx-text-fill: gray;");
+                    } else {
+                        setDisable(false);
+                        setStyle("");
+                    }
+                }
+            }
+        });
+        categoryCombo.getSelectionModel().select(oldT.getCategory().getName());
         grid.add(categoryCombo, 0, 1);
         
         grid.add(new Label("Ngày:"), 1, 0);
@@ -333,6 +367,20 @@ public class WalletViewController {
         periodCombo.setDisable(true);
         grid.add(periodCombo, 1, 2);
         
+        categoryCombo.setOnAction(e -> {
+            String catName = categoryCombo.getValue();
+            if (catName != null && catName.startsWith("---")) return;
+            core.Category selectedCategory = allCategories.stream().filter(c -> c.getName().equals(catName)).findFirst().orElse(null);
+            if (selectedCategory != null && selectedCategory.getType() == core.TransactionType.INCOME) {
+                recurringCheck.setDisable(true);
+                recurringCheck.setSelected(false);
+                periodCombo.setDisable(true);
+            } else {
+                recurringCheck.setDisable(false);
+                periodCombo.setDisable(!recurringCheck.isSelected());
+            }
+        });
+
         if (oldT instanceof core.transaction.RecurringExpense) {
             recurringCheck.setSelected(true);
             periodCombo.setDisable(false);
@@ -347,19 +395,6 @@ public class WalletViewController {
         
         recurringCheck.setOnAction(e -> {
             periodCombo.setDisable(!recurringCheck.isSelected());
-        });
-        
-        categoryCombo.setOnAction(e -> {
-            String catName = categoryCombo.getValue();
-            core.Category selectedCategory = allCategories.stream().filter(c -> c.getName().equals(catName)).findFirst().orElse(null);
-            if (selectedCategory != null && selectedCategory.getType() == core.TransactionType.INCOME) {
-                recurringCheck.setDisable(true);
-                recurringCheck.setSelected(false);
-                periodCombo.setDisable(true);
-            } else {
-                recurringCheck.setDisable(false);
-                periodCombo.setDisable(!recurringCheck.isSelected());
-            }
         });
         
         dialog.getDialogPane().setContent(grid);
@@ -381,6 +416,12 @@ public class WalletViewController {
                     return;
                 }
                 String catName = categoryCombo.getValue();
+                if (catName == null || catName.startsWith("---")) {
+                    javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, "Vui lòng chọn một danh mục hợp lệ", javafx.scene.control.ButtonType.OK);
+                    alert.showAndWait();
+                    event.consume();
+                    return;
+                }
                 core.Category cat = allCategories.stream().filter(c -> c.getName().equals(catName)).findFirst().orElse(null);
                 
                 double simulatedBalance = currentWallet.getBalance();
@@ -467,8 +508,9 @@ public class WalletViewController {
             updateOverviewData();
             renderTransactions();
             
-            currentBalanceLabel.setText(String.format("%,.2f VND", currentWallet.getBalance()));
-            if (overviewBalanceLabel != null) overviewBalanceLabel.setText(String.format("%,.2f VND", currentWallet.getBalance()));
+            String curr = currentWallet.getCurrency();
+            currentBalanceLabel.setText(String.format("%,.2f %s", currentWallet.getBalance(), curr));
+            if (overviewBalanceLabel != null) overviewBalanceLabel.setText(String.format("%,.2f %s", currentWallet.getBalance(), curr));
         });
     }
     
@@ -530,6 +572,8 @@ public class WalletViewController {
     @FXML private javafx.scene.layout.VBox settingsMain;
     @FXML private javafx.scene.layout.VBox settingsCategories;
     @FXML private javafx.scene.control.TextField settingWalletName;
+    @FXML private javafx.scene.control.TextField settingInitialBalance;
+    @FXML private javafx.scene.control.ComboBox<String> settingCurrency;
     @FXML private javafx.scene.control.ComboBox<String> categoryTypeCombo;
     @FXML private javafx.scene.control.ComboBox<String> categoryIconCombo;
     @FXML private javafx.scene.control.ComboBox<String> categoryColorCombo;
@@ -849,7 +893,84 @@ public class WalletViewController {
         switchTab(tabSettings, menuSettings);
         if (settingWalletName != null && currentWallet != null) {
             settingWalletName.setText(currentWallet.getName());
+            if (settingInitialBalance != null) {
+                double netTx = 0;
+                if (currentWallet.getTransactions() != null) {
+                    for (core.transaction.Transaction t : currentWallet.getTransactions()) {
+                        if (t.getType() == core.TransactionType.INCOME) {
+                            netTx += t.getAmount();
+                        } else if (t.getType() == core.TransactionType.EXPENSE) {
+                            netTx -= t.getAmount();
+                        }
+                    }
+                }
+                double initialBalance = currentWallet.getBalance() - netTx;
+                settingInitialBalance.setText(String.format("%.0f", initialBalance));
+            }
+            if (settingCurrency != null) {
+                if (settingCurrency.getItems().isEmpty()) {
+                    settingCurrency.getItems().addAll("VND", "USD");
+                }
+                settingCurrency.setValue(currentWallet.getCurrency());
+            }
         }
+    }
+
+    @FXML
+    private void handleUpdateWalletSettings() {
+        if (currentWallet == null) return;
+        
+        String newName = settingWalletName.getText();
+        if (newName == null || newName.trim().isEmpty()) {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, "Tên ví không được để trống!", javafx.scene.control.ButtonType.OK);
+            alert.showAndWait();
+            return;
+        }
+        
+        double newInitialBalance;
+        try {
+            newInitialBalance = Double.parseDouble(settingInitialBalance.getText().replaceAll(",", ""));
+        } catch (NumberFormatException e) {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, "Số dư không hợp lệ!", javafx.scene.control.ButtonType.OK);
+            alert.showAndWait();
+            return;
+        }
+        
+        double netTx = 0;
+        if (currentWallet.getTransactions() != null) {
+            for (core.transaction.Transaction t : currentWallet.getTransactions()) {
+                if (t.getType() == core.TransactionType.INCOME) {
+                    netTx += t.getAmount();
+                } else if (t.getType() == core.TransactionType.EXPENSE) {
+                    netTx -= t.getAmount();
+                }
+            }
+        }
+        double newCurrentBalance = newInitialBalance + netTx;
+        
+        if (newCurrentBalance < 0) {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, "Thay đổi này sẽ làm số dư hiện tại của ví bị âm!", javafx.scene.control.ButtonType.OK);
+            alert.showAndWait();
+            return;
+        }
+        
+        core.storage.WalletDAO dao = new core.storage.WalletDAO();
+        
+        String newCurrency = settingCurrency != null && settingCurrency.getValue() != null ? settingCurrency.getValue() : currentWallet.getCurrency();
+        
+        dao.updateWallet(currentWallet.getId(), newName.trim(), newCurrentBalance, newCurrency);
+        
+        currentWallet.setName(newName.trim());
+        currentWallet.setBalance(newCurrentBalance);
+        currentWallet.setCurrency(newCurrency);
+        
+        if (walletNameTopLabel != null) walletNameTopLabel.setText(currentWallet.getName());
+        if (currentBalanceLabel != null) currentBalanceLabel.setText(String.format("%,.2f %s", currentWallet.getBalance(), currentWallet.getCurrency()));
+        if (overviewBalanceLabel != null) overviewBalanceLabel.setText(String.format("%,.2f %s", currentWallet.getBalance(), currentWallet.getCurrency()));
+        updateOverviewData();
+        
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION, "Cập nhật thông tin ví thành công!", javafx.scene.control.ButtonType.OK);
+        alert.showAndWait();
     }
 
     private void switchTab(javafx.scene.Node tab, javafx.scene.layout.VBox menu) {
@@ -903,10 +1024,41 @@ public class WalletViewController {
 
         grid.add(new Label("Category:"), 0, 0);
         javafx.scene.control.ComboBox<String> categoryCombo = new javafx.scene.control.ComboBox<>();
+        categoryCombo.getItems().add("--- CHI TIÊU (EXPENSE) ---");
         for (core.Category cat : allCategories) {
-            categoryCombo.getItems().add(cat.getName());
+            if (cat.getType() == core.TransactionType.EXPENSE) {
+                categoryCombo.getItems().add(cat.getName());
+            }
         }
-        if (!categoryCombo.getItems().isEmpty()) categoryCombo.getSelectionModel().selectFirst();
+        categoryCombo.getItems().add("--- THU NHẬP (INCOME) ---");
+        for (core.Category cat : allCategories) {
+            if (cat.getType() == core.TransactionType.INCOME) {
+                categoryCombo.getItems().add(cat.getName());
+            }
+        }
+        categoryCombo.setCellFactory(lv -> new javafx.scene.control.ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setDisable(false);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (item.startsWith("---")) {
+                        setDisable(true);
+                        setStyle("-fx-font-weight: bold; -fx-text-fill: gray;");
+                    } else {
+                        setDisable(false);
+                        setStyle("");
+                    }
+                }
+            }
+        });
+        if (categoryCombo.getItems().size() > 1) {
+            categoryCombo.getSelectionModel().select(1);
+        }
         grid.add(categoryCombo, 0, 1);
         
         grid.add(new Label("Date:"), 1, 0);
@@ -936,6 +1088,7 @@ public class WalletViewController {
         
         categoryCombo.setOnAction(e -> {
             String catName = categoryCombo.getValue();
+            if (catName != null && catName.startsWith("---")) return;
             core.Category selectedCategory = allCategories.stream().filter(c -> c.getName().equals(catName)).findFirst().orElse(null);
             if (selectedCategory != null && selectedCategory.getType() == core.TransactionType.INCOME) {
                 recurringCheck.setDisable(true);
@@ -966,6 +1119,12 @@ public class WalletViewController {
                     return;
                 }
                 String catName = categoryCombo.getValue();
+                if (catName == null || catName.startsWith("---")) {
+                    javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, "Vui lòng chọn một danh mục hợp lệ", javafx.scene.control.ButtonType.OK);
+                    alert.showAndWait();
+                    event.consume();
+                    return;
+                }
                 core.Category cat = allCategories.stream().filter(c -> c.getName().equals(catName)).findFirst().orElse(null);
                 if (cat != null && cat.getType() == core.TransactionType.EXPENSE && amt > currentWallet.getBalance()) {
                     javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, "S\u1ed1 ti\u1ec1n chi ti\u00eau kh\u00f4ng \u0111\u01b0\u1ee3c v\u01b0\u1ee3t qu\u00e1 s\u1ed1 d\u01b0 v\u00ed", javafx.scene.control.ButtonType.OK);
@@ -1030,9 +1189,10 @@ public class WalletViewController {
             renderTransactions();
             
             // Refresh wallet balance labels
-            currentBalanceLabel.setText(String.format("%,.2f VND", currentWallet.getBalance()));
+            String curr = currentWallet.getCurrency();
+            currentBalanceLabel.setText(String.format("%,.2f %s", currentWallet.getBalance(), curr));
             if (overviewBalanceLabel != null) {
-                overviewBalanceLabel.setText(String.format("%,.2f VND", currentWallet.getBalance()));
+                overviewBalanceLabel.setText(String.format("%,.2f %s", currentWallet.getBalance(), curr));
             }
         });
     }
@@ -1211,11 +1371,18 @@ public class WalletViewController {
         double totalChange = totalIncome - totalExpense;
 
         // Update Labels
-        if (overviewIncomeLabel != null) overviewIncomeLabel.setText(String.format("+%,.2f VND", totalIncome));
-        if (overviewExpenseLabel != null) overviewExpenseLabel.setText(String.format("-%,.2f VND", totalExpense));
+        String curr = currentWallet != null ? currentWallet.getCurrency() : "VND";
+        if (overviewIncomeLabel != null) overviewIncomeLabel.setText(String.format("+%,.2f %s", totalIncome, curr));
+        if (overviewExpenseLabel != null) overviewExpenseLabel.setText(String.format("-%,.2f %s", totalExpense, curr));
         if (overviewChangeLabel != null) {
-            overviewChangeLabel.setText(String.format("%s%,.2f VND", totalChange >= 0 ? "+" : "", totalChange));
+            overviewChangeLabel.setText(String.format("%s%,.2f %s", totalChange >= 0 ? "+" : "", totalChange, curr));
             overviewChangeLabel.setStyle(totalChange >= 0 ? "-fx-text-fill: #3b82f6;" : "-fx-text-fill: #ef4444;");
+        }
+        if (transIncomeLabel != null) transIncomeLabel.setText(String.format("+%,.2f %s", totalIncome, curr));
+        if (transExpenseLabel != null) transExpenseLabel.setText(String.format("-%,.2f %s", totalExpense, curr));
+        if (transChangeLabel != null) {
+            transChangeLabel.setText(String.format("%s%,.2f %s", totalChange >= 0 ? "+" : "", totalChange, curr));
+            transChangeLabel.setStyle(totalChange >= 0 ? "-fx-text-fill: #3b82f6;" : "-fx-text-fill: #ef4444;");
         }
 
         // Helper formatter for charts
@@ -1223,9 +1390,10 @@ public class WalletViewController {
         javafx.util.StringConverter<Number> formatterVND = new javafx.util.StringConverter<Number>() {
             @Override
             public String toString(Number object) {
+                if (object == null) return "0 " + curr;
                 double val = object.doubleValue();
-                if (val == 0) return "0.00 VND";
-                return String.format("%s%,.2f VND", val > 0 ? "+" : "", val);
+                if (val == 0) return "0.00 " + curr;
+                return String.format("%s%,.2f %s", val > 0 ? "+" : "", val, curr);
             }
             @Override
             public Number fromString(String string) { return null; }
@@ -1282,7 +1450,7 @@ public class WalletViewController {
                         tbox.setStyle("-fx-background-color: white; -fx-padding: 10px; -fx-background-radius: 4px; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0); -fx-border-color: #e2e8f0; -fx-border-radius: 4px;");
                         javafx.scene.control.Label dLbl = new javafx.scene.control.Label(bucket.tooltipDateRange);
                         dLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #2d3748;");
-                        javafx.scene.control.Label bLbl = new javafx.scene.control.Label(String.format("Balance: %,.2f VND", balVal));
+                        javafx.scene.control.Label bLbl = new javafx.scene.control.Label(String.format("Balance: %,.2f %s", balVal, curr));
                         bLbl.setStyle("-fx-text-fill: #2563eb; -fx-font-weight: bold;");
                         tbox.getChildren().addAll(dLbl, bLbl);
                         tooltip.setGraphic(tbox);
@@ -1329,9 +1497,9 @@ public class WalletViewController {
                         tbox.setStyle("-fx-background-color: white; -fx-padding: 10px; -fx-background-radius: 4px; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0); -fx-border-color: #e2e8f0; -fx-border-radius: 4px;");
                         javafx.scene.control.Label dLbl = new javafx.scene.control.Label(bucket.tooltipDateRange);
                         dLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #2d3748;");
-                        javafx.scene.control.Label iLbl = new javafx.scene.control.Label(String.format("Income: +%,.2f VND", incVal));
+                        javafx.scene.control.Label iLbl = new javafx.scene.control.Label(String.format("Income: +%,.2f %s", incVal, curr));
                         iLbl.setStyle("-fx-text-fill: #2563eb; -fx-font-weight: bold;");
-                        javafx.scene.control.Label eLbl = new javafx.scene.control.Label(String.format("Expense: %,.2f VND", expVal));
+                        javafx.scene.control.Label eLbl = new javafx.scene.control.Label(String.format("Expense: %,.2f %s", expVal, curr));
                         eLbl.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
                         tbox.getChildren().addAll(dLbl, iLbl, eLbl);
                         tooltip.setGraphic(tbox);
@@ -1384,7 +1552,8 @@ public class WalletViewController {
             javafx.scene.layout.Region spacer = new javafx.scene.layout.Region();
             javafx.scene.layout.HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
             
-            javafx.scene.control.Label amountLabel = new javafx.scene.control.Label(String.format("%s%,.2f VND", isIncome ? "+" : "-", entry.getValue()));
+            String curr = currentWallet != null ? currentWallet.getCurrency() : "VND";
+            javafx.scene.control.Label amountLabel = new javafx.scene.control.Label(String.format("%s%,.2f %s", isIncome ? "+" : "-", entry.getValue(), curr));
             amountLabel.setStyle(String.format("-fx-font-weight: bold; -fx-text-fill: %s; -fx-font-size: 13px;", isIncome ? "#2563eb" : "#ef4444"));
             
             hbox.getChildren().addAll(circle, nameLabel, spacer, amountLabel);
@@ -1470,7 +1639,8 @@ public class WalletViewController {
         javafx.scene.control.TextField nameField = new javafx.scene.control.TextField();
         grid.add(nameField, 1, 0);
 
-        grid.add(new Label("Hạn mức (VND):"), 0, 1);
+        String curr = currentWallet != null ? currentWallet.getCurrency() : "VND";
+        grid.add(new Label("Hạn mức (" + curr + "):"), 0, 1);
         javafx.scene.control.TextField amountField = new javafx.scene.control.TextField("0");
         grid.add(amountField, 1, 1);
         
@@ -1578,87 +1748,120 @@ public class WalletViewController {
             budget.updateSpentFromTransactions(walletTx);
             
             javafx.scene.layout.VBox card = new javafx.scene.layout.VBox();
-            card.setSpacing(20);
-            card.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 20; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 5);");
+            card.setSpacing(25);
+            card.setStyle("-fx-background-color: white; -fx-background-radius: 16; -fx-padding: 25; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 15, 0, 0, 5); -fx-border-color: #e2e8f0; -fx-border-radius: 16; -fx-border-width: 1;");
             
             // Header
             javafx.scene.layout.HBox header = new javafx.scene.layout.HBox();
             header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-            Label title = new Label("Ngân sách > " + budget.getName() + "\n" + (budget.getCategory() != null ? budget.getCategory().getName() : "Tất cả"));
-            title.setStyle("-fx-font-size: 16; -fx-font-weight: bold;");
+            
+            javafx.scene.layout.VBox titleBox = new javafx.scene.layout.VBox(5);
+            Label nameLabel = new Label(budget.getName());
+            nameLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #1e293b;");
+            
+            String catName = budget.getCategory() != null ? budget.getCategory().getName() : "All Categories";
+            Label catLabel = new Label("Category: " + catName);
+            catLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #64748b; -fx-font-weight: 500;");
+            titleBox.getChildren().addAll(nameLabel, catLabel);
             
             javafx.scene.layout.Region spacer1 = new javafx.scene.layout.Region();
             javafx.scene.layout.HBox.setHgrow(spacer1, javafx.scene.layout.Priority.ALWAYS);
             
-            javafx.scene.control.Button editBtn = new javafx.scene.control.Button("Xóa ngân sách");
-            editBtn.setStyle("-fx-background-color: #ffebee; -fx-text-fill: #d32f2f; -fx-font-weight: bold; -fx-background-radius: 5;");
+            javafx.scene.control.Button editBtn = new javafx.scene.control.Button("Delete Budget");
+            editBtn.setStyle("-fx-background-color: #fef2f2; -fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 8 16 8 16; -fx-cursor: hand; -fx-border-color: #fee2e2; -fx-border-radius: 8;");
             editBtn.setOnAction(e -> {
                 dao.deleteBudget(budget.getId());
                 renderBudgets();
             });
-            header.getChildren().addAll(title, spacer1, editBtn);
+            header.getChildren().addAll(titleBox, spacer1, editBtn);
             
             // Stats Grid
             javafx.scene.layout.HBox statsBox = new javafx.scene.layout.HBox();
             statsBox.setSpacing(15);
             statsBox.setAlignment(javafx.geometry.Pos.CENTER);
             
+            String curr = currentWallet != null ? currentWallet.getCurrency() : "VND";
             statsBox.getChildren().addAll(
-                createStatCard("Originally Budgeted", String.format("+%,.0f VND", budget.getLimitAmount()), "#4caf50"),
-                createStatCard("Chi tiêu gần đây", String.format("-%,.0f VND", budget.getCurrentSpent()), "#f44336"),
-                createStatCard("Money left", String.format("%s%,.0f VND", budget.getRemainingAmount() >= 0 ? "+" : "", budget.getRemainingAmount()), budget.getRemainingAmount() >= 0 ? "#4caf50" : "#f44336"),
-                createStatCard("You can spend", String.format("%,.0f VND/Day", budget.calcDailyAllowance(java.time.LocalDate.now())), "#2196f3")
+                createStatCard("Originally Budgeted", String.format("%,.0f %s", budget.getLimitAmount(), curr), "#10b981", "#ecfdf5"),
+                createStatCard("Spent", String.format("%,.0f %s", budget.getCurrentSpent(), curr), "#ef4444", "#fef2f2"),
+                createStatCard("Left", String.format("%,.0f %s", budget.getRemainingAmount(), curr), budget.getRemainingAmount() >= 0 ? "#10b981" : "#ef4444", budget.getRemainingAmount() >= 0 ? "#ecfdf5" : "#fef2f2"),
+                createStatCard("Daily Allowance", String.format("%,.0f %s", budget.calcDailyAllowance(java.time.LocalDate.now()), curr), "#3b82f6", "#eff6ff")
             );
             
             // Progress Section
             javafx.scene.layout.VBox progressBox = new javafx.scene.layout.VBox();
-            progressBox.setSpacing(10);
+            progressBox.setSpacing(12);
             
-            Label progressTitle = new Label("Tiến độ ngân sách");
-            progressTitle.setStyle("-fx-font-size: 14; -fx-font-weight: bold;");
-            
-            Label progressDesc = new Label("Keep spending. You can spend " + String.format("%,.0f VND", budget.calcDailyAllowance(java.time.LocalDate.now())) + " each day for the rest of the period.");
+            javafx.scene.layout.HBox progressTitleBox = new javafx.scene.layout.HBox();
+            Label progressTitle = new Label("Budget Progress");
+            progressTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #334155;");
+            javafx.scene.layout.Region pSpacer = new javafx.scene.layout.Region();
+            javafx.scene.layout.HBox.setHgrow(pSpacer, javafx.scene.layout.Priority.ALWAYS);
+            Label percentageLbl = new Label(String.format("%.1f%%", budget.getUsagePercentage()));
+            percentageLbl.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: " + (budget.isExceed() ? "#ef4444" : "#10b981") + ";");
+            progressTitleBox.getChildren().addAll(progressTitle, pSpacer, percentageLbl);
             
             javafx.scene.control.ProgressBar pBar = new javafx.scene.control.ProgressBar(budget.getUsagePercentage() / 100.0);
             pBar.setMaxWidth(Double.MAX_VALUE);
-            pBar.setPrefHeight(20);
-            if (budget.isExceed()) {
-                pBar.setStyle("-fx-accent: #f44336;");
-            } else {
-                pBar.setStyle("-fx-accent: #4caf50;");
-            }
+            pBar.setPrefHeight(12);
+            pBar.setStyle("-fx-accent: " + (budget.isExceed() ? "#ef4444" : "#10b981") + "; -fx-control-inner-background: #f1f5f9;");
             
             javafx.scene.layout.HBox datesBox = new javafx.scene.layout.HBox();
             Label startDateLbl = new Label(budget.getStartDate() != null ? budget.getStartDate().toString() : "");
-            startDateLbl.setStyle("-fx-text-fill: #9e9e9e; -fx-font-size: 12;");
+            startDateLbl.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px; -fx-font-weight: bold;");
             javafx.scene.layout.Region spacer2 = new javafx.scene.layout.Region();
             javafx.scene.layout.HBox.setHgrow(spacer2, javafx.scene.layout.Priority.ALWAYS);
             Label endDateLbl = new Label(budget.getEndDate() != null ? budget.getEndDate().toString() : "");
-            endDateLbl.setStyle("-fx-text-fill: #9e9e9e; -fx-font-size: 12;");
+            endDateLbl.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px; -fx-font-weight: bold;");
             datesBox.getChildren().addAll(startDateLbl, spacer2, endDateLbl);
             
-            progressBox.getChildren().addAll(progressTitle, progressDesc, pBar, datesBox);
+            progressBox.getChildren().addAll(progressTitleBox, pBar, datesBox);
             
             card.getChildren().addAll(header, statsBox, progressBox);
             budgetsContainer.getChildren().add(card);
         }
     }
 
-    private javafx.scene.layout.VBox createStatCard(String title, String value, String valueColor) {
+    private javafx.scene.layout.VBox createStatCard(String title, String value, String valueColor, String bgColor) {
         javafx.scene.layout.VBox box = new javafx.scene.layout.VBox();
-        box.setSpacing(5);
-        box.setStyle("-fx-background-color: #f9f9f9; -fx-padding: 15; -fx-background-radius: 5;");
+        box.setSpacing(8);
+        box.setStyle("-fx-background-color: " + bgColor + "; -fx-padding: 16; -fx-background-radius: 12; -fx-border-color: " + valueColor + "40; -fx-border-radius: 12; -fx-border-width: 1;");
         javafx.scene.layout.HBox.setHgrow(box, javafx.scene.layout.Priority.ALWAYS);
         box.setMaxWidth(Double.MAX_VALUE);
+        box.setAlignment(javafx.geometry.Pos.CENTER);
         
         Label tLbl = new Label(title);
-        tLbl.setStyle("-fx-text-fill: #757575; -fx-font-size: 12;");
+        tLbl.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px; -fx-font-weight: 600;");
         
         Label vLbl = new Label(value);
-        vLbl.setStyle("-fx-text-fill: " + valueColor + "; -fx-font-size: 16; -fx-font-weight: bold;");
+        vLbl.setStyle("-fx-text-fill: " + valueColor + "; -fx-font-size: 18px; -fx-font-weight: bold;");
         
         box.getChildren().addAll(tLbl, vLbl);
         return box;
+    }
+
+    @FXML
+    private void handleDeleteWallet(MouseEvent event) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Xóa ví");
+        alert.setHeaderText("Bạn có chắc chắn muốn xóa ví này không?");
+        alert.setContentText("Toàn bộ các giao dịch nằm trong ví đó cũng sẽ bị xóa vĩnh viễn không thể khôi phục.");
+        
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            WalletDAO dao = new WalletDAO();
+            dao.deleteWallet(currentWallet.getId());
+            
+            // Navigate back to Dashboard
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Dashboard.fxml"));
+                Parent root = loader.load();
+                Stage stage = (Stage) deleteWalletLabel.getScene().getWindow();
+                stage.setScene(new Scene(root, 1024, 768));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
 

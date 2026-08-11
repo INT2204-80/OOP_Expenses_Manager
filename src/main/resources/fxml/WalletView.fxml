@@ -103,17 +103,17 @@
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label text="Total Period Change" styleClass="summary-card-title"/>
-                            <Label text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                            <Label fx:id="transChangeLabel" text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
                         </VBox>
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label text="Total Period Expenses" styleClass="summary-card-title"/>
-                            <Label text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                            <Label fx:id="transExpenseLabel" text="0.00 VND" styleClass="summary-card-value" style="-fx-text-fill: #ef4444;"/>
                         </VBox>
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label text="Total Period Income" styleClass="summary-card-title"/>
-                            <Label text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
+                            <Label fx:id="transIncomeLabel" text="0.00 VND" styleClass="summary-card-value, value-spendee-green"/>
                         </VBox>
                     </HBox>
                     <!-- TRANSACTIONS LIST -->
@@ -336,38 +336,21 @@
                             <HBox spacing="20">
                                 <VBox spacing="5" HBox.hgrow="ALWAYS">
                                     <Label text="Initial balance" styleClass="settings-field-label"/>
-                                    <javafx.scene.control.TextField text="0" styleClass="settings-textfield"/>
+                                    <javafx.scene.control.TextField fx:id="settingInitialBalance" text="0" styleClass="settings-textfield"/>
                                 </VBox>
                                 <VBox spacing="5" HBox.hgrow="ALWAYS">
                                     <Label text="Wallet currency" styleClass="settings-field-label"/>
-                                    <javafx.scene.control.TextField text="VND" styleClass="settings-textfield"/>
+                                    <javafx.scene.control.ComboBox fx:id="settingCurrency" styleClass="settings-textfield" style="-fx-background-color: white; -fx-border-color: #e2e8f0; -fx-border-radius: 6;"/>
                                 </VBox>
                             </HBox>
                             
                             <HBox alignment="CENTER_LEFT">
-                                <Button text="Update settings" styleClass="toggle-button" style="-fx-background-color: #f1f5f9; -fx-text-fill: #64748b;"/>
+                                <Button text="Update settings" onAction="#handleUpdateWalletSettings" styleClass="toggle-button" style="-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"/>
                             </HBox>
 
                             <Region prefHeight="20"/>
-                            <Label text="Wallet members" styleClass="settings-section-title"/>
-                            <VBox spacing="5">
-                                <Label text="Add new member" styleClass="settings-field-label"/>
-                                <javafx.scene.control.TextField promptText="Invitee's email address" styleClass="settings-textfield"/>
-                            </VBox>
-                            <HBox alignment="CENTER_LEFT" spacing="15">
-                                <StackPane>
-                                    <Circle radius="16" fill="#e2e8f0"/>
-                                    <SVGPath content="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="#a0aec0" scaleX="0.8" scaleY="0.8"/>
-                                </StackPane>
-                                <VBox>
-                                    <Label text="Admin" style="-fx-font-weight: bold;"/>
-                                    <Label text="admin@example.com" style="-fx-text-fill: #a0aec0; -fx-font-size: 12px;"/>
-                                </VBox>
-                                <Region HBox.hgrow="ALWAYS"/>
-                                <Label text="Owner" style="-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-padding: 2 6; -fx-background-radius: 4; -fx-font-size: 11px;"/>
-                            </HBox>
                             <HBox alignment="CENTER_RIGHT">
-                                <Label text="Delete wallet" style="-fx-text-fill: #ef4444; -fx-underline: true; -fx-cursor: hand;"/>
+                                <Label fx:id="deleteWalletLabel" text="Delete wallet" onMouseClicked="#handleDeleteWallet" style="-fx-text-fill: #ef4444; -fx-underline: true; -fx-cursor: hand;"/>
                             </HBox>
                         </VBox>
 

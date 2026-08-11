@@ -25,17 +25,18 @@ public class WalletDAO {
                 String name = rs.getString("name");
                 double balance = rs.getDouble("balance");
                 String type = rs.getString("wallet_type");
+                String currency = rs.getString("currency");
 
                 Wallet wallet = null;
                 if ("CASH".equals(type)) {
-                    wallet = new CashWallet(name, balance);
+                    wallet = new CashWallet(name, balance, currency);
                 } else if ("BANK".equals(type)) {
                     String bankName = rs.getString("bank_name");
                     String accNum = rs.getString("account_number");
-                    wallet = new BankAccount(name, balance, bankName, accNum);
+                    wallet = new BankAccount(name, balance, currency, bankName, accNum);
                 } else if ("EWALLET".equals(type)) {
                     String provider = rs.getString("provider");
-                    wallet = new EWallet(name, balance, provider);
+                    wallet = new EWallet(name, balance, currency, provider);
                 }
                 
                 if (wallet != null) {
@@ -52,7 +53,7 @@ public class WalletDAO {
     }
 
     public void addWallet(Wallet wallet) {
-        String sql = "INSERT INTO wallets (name, balance, wallet_type, bank_name, account_number, provider) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO wallets (name, balance, wallet_type, bank_name, account_number, provider, currency) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -76,6 +77,7 @@ public class WalletDAO {
                 pstmt.setNull(5, Types.VARCHAR);
                 pstmt.setNull(6, Types.VARCHAR);
             }
+            pstmt.setString(7, wallet.getCurrency());
 
             pstmt.executeUpdate();
 
@@ -83,6 +85,22 @@ public class WalletDAO {
             System.err.println("Error adding wallet: " + e.getMessage());
         }
     }
+    public void updateWallet(int walletId, String newName, double newBalance, String newCurrency) {
+        String sql = "UPDATE wallets SET name = ?, balance = ?, currency = ? WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             
+            pstmt.setString(1, newName);
+            pstmt.setDouble(2, newBalance);
+            pstmt.setString(3, newCurrency);
+            pstmt.setInt(4, walletId);
+            pstmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            System.err.println("Error updating wallet: " + e.getMessage());
+        }
+    }
+
     public void updateBalance(int walletId, double newBalance) {
         String sql = "UPDATE wallets SET balance = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
