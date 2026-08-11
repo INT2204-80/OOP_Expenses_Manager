@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import core.storage.BudgetDAO;
 import core.storage.TransactionDAO;
+import core.storage.WalletDAO;
 import core.transaction.Transaction;
 import core.wallet.Wallet;
 import expensemanager.service.BudgetService;
@@ -37,6 +38,7 @@ public class WalletViewController {
     private final TransactionService transactionService;
     private final TransactionDAO transactionDAO;
     private final BudgetDAO budgetDAO;
+    private final WalletDAO walletDAO;
     private final BudgetService budgetService;
 
     private final PeriodFilterManager periodManager;
@@ -49,6 +51,7 @@ public class WalletViewController {
     public WalletViewController() {
         this.transactionDAO = new TransactionDAO();
         this.budgetDAO = new BudgetDAO();
+        this.walletDAO = new WalletDAO();
         this.transactionService = new TransactionService();
         this.budgetService = new BudgetService(this.budgetDAO, this.transactionDAO);
 
@@ -63,6 +66,7 @@ public class WalletViewController {
                                 BudgetDAO budgetDAO, BudgetService budgetService) {
         this.transactionDAO = transactionDAO;
         this.budgetDAO = budgetDAO;
+        this.walletDAO = new WalletDAO();
         this.transactionService = transactionService;
         this.budgetService = budgetService;
 
@@ -129,6 +133,9 @@ public class WalletViewController {
     @FXML private VBox expenseCategoriesContainer;
     @FXML private TextField settingInitialBalance;
     @FXML private TextField settingCurrency;
+    @FXML private Label transChangeLabel;
+    @FXML private Label transExpenseLabel;
+    @FXML private Label transIncomeLabel;
 
     @FXML private Label periodLabelOverview;
     @FXML private Label periodLabelTrans;
@@ -214,6 +221,20 @@ public class WalletViewController {
                 periodLabelOverview, periodLabelTrans,
                 balanceChart, changesChart, incomePieChart, expensePieChart,
                 incomeLegendBox, expenseLegendBox);
+                expensemanager.service.WalletOverviewCalculator.OverviewResult result = 
+            expensemanager.service.WalletOverviewCalculator.compute(filtered);
+
+        if (transIncomeLabel != null) {
+            transIncomeLabel.setText(String.format("+%,.2f VND", Math.abs(result.totalIncome)));
+        }
+        if (transExpenseLabel != null) {
+            transExpenseLabel.setText(String.format("-%,.2f VND", Math.abs(result.totalExpense)));
+        }
+        if (transChangeLabel != null) {
+            double change = result.totalChange();
+            transChangeLabel.setText(String.format("%s%,.2f VND", change >= 0 ? "+" : "", change));
+            transChangeLabel.setStyle(change >= 0 ? "-fx-text-fill: #3b82f6;" : "-fx-text-fill: #ef4444;");
+        }
     }
 
     // =========================================================================
@@ -285,6 +306,8 @@ public class WalletViewController {
         switchTab(tabSettings, menuSettings);
         if (settingWalletName != null && currentWallet != null) {
             settingWalletName.setText(currentWallet.getName());
+            settingInitialBalance.setText(String.valueOf(currentWallet.getBalance()));
+            settingCurrency.setText("VND");
         }
     }
 
@@ -376,18 +399,20 @@ public class WalletViewController {
         try {
             double initialBalance = Double.parseDouble(initialBalanceStr);
 
-            // TODO: Cập nhật thông tin Ví vào Database / Model của bạn
-            // currentWallet.setName(newName);
-            // currentWallet.setInitialBalance(initialBalance);
-            // currentWallet.setCurrency(currency);
-            // walletService.updateWallet(currentWallet);
+            if (currentWallet == null) {
+                showAlert(Alert.AlertType.ERROR, "Lỗi", "Không có ví để cập nhật.");
+                return;
+            }
 
-            // Cập nhật lại tên ví trên thanh Tiêu đề (Navigation Top) ngay lập tức
+            currentWallet.setName(newName);
+            currentWallet.setBalance(initialBalance);
+            walletDAO.updateWallet(currentWallet);
+
             if (walletNameTopLabel != null) {
                 walletNameTopLabel.setText(newName);
             }
+            refreshBalanceLabels();
 
-            // Hiển thị thông báo thành công
             showAlert(Alert.AlertType.INFORMATION, "Success", "Wallet settings updated successfully!");
 
         } catch (NumberFormatException e) {

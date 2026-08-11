@@ -44,13 +44,18 @@ public class WalletOverviewTabController {
         List<Transaction> safeTransactions = filteredTransactions != null ? filteredTransactions : Collections.emptyList();
         OverviewResult overview = WalletOverviewCalculator.compute(safeTransactions);
 
-        if (overviewIncomeLabel != null) overviewIncomeLabel.setText(String.format("+%,.2f VND", overview.totalIncome));
-        if (overviewExpenseLabel != null) overviewExpenseLabel.setText(String.format("-%,.2f VND", overview.totalExpense));
+        if (overviewIncomeLabel != null) {
+            overviewIncomeLabel.setText(String.format("+%,.2f VND", Math.abs(overview.totalIncome)));
+        }
+        if (overviewExpenseLabel != null) {
+            overviewExpenseLabel.setText(String.format("-%,.2f VND", Math.abs(overview.totalExpense)));
+        }
         if (overviewChangeLabel != null) {
             double change = overview.totalChange();
             overviewChangeLabel.setText(String.format("%s%,.2f VND", change >= 0 ? "+" : "", change));
             overviewChangeLabel.setStyle(change >= 0 ? "-fx-text-fill: #3b82f6;" : "-fx-text-fill: #ef4444;");
         }
+        
 
         StringConverter<Number> formatterVND = new StringConverter<Number>() {
             @Override
@@ -99,5 +104,4 @@ public class WalletOverviewTabController {
             if (!inactive2.getStyleClass().contains("chart-toggle")) inactive2.getStyleClass().add("chart-toggle");
         }
     }
-    
 }

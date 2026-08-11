@@ -98,17 +98,17 @@
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label styleClass="summary-card-title" text="Total Period Change" />
-                            <Label styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
+                            <Label fx:id="transChangeLabel" styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
                         </VBox>
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label styleClass="summary-card-title" text="Total Period Expenses" />
-                            <Label styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
+                            <Label fx:id="transExpenseLabel" style="-fx-text-fill: #ef4444;" styleClass="summary-card-value" text="0.00 VND" />
                         </VBox>
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label styleClass="summary-card-title" text="Total Period Income" />
-                            <Label styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
+                            <Label fx:id="transIncomeLabel" styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
                         </VBox>
                     </HBox>
                     <!-- TRANSACTIONS LIST -->

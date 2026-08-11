@@ -54,8 +54,9 @@ public final class WalletOverviewCalculator {
     public static OverviewResult compute(List<Transaction> filteredTransactions) {
         OverviewResult r = new OverviewResult();
 
-        if (filteredTransactions.isEmpty()) {
+        if (filteredTransactions == null || filteredTransactions.isEmpty()) {
             r.balanceByDate.put(LocalDate.now().minusDays(1), 0.0);
+            return r;
         } else {
             r.balanceByDate.put(filteredTransactions.get(0).getDate().minusDays(1), 0.0);
         }
@@ -65,9 +66,15 @@ public final class WalletOverviewCalculator {
         sorted.sort(Comparator.comparing(Transaction::getDate));
 
         for (Transaction t : sorted) {
+            if (t == null || t.getDate() == null) {
+                continue;
+            }
+
             LocalDate date = t.getDate();
-            double amount = t.getAmount();
-            String catName = t.getCategory().getName();
+            double amount = Math.abs(t.getAmount());
+            String catName = (t.getCategory() != null && t.getCategory().getName() != null) 
+                    ? t.getCategory().getName() 
+                    : "Khác";
 
             if (t.getType() == TransactionType.INCOME) {
                 r.totalIncome += amount;
@@ -128,10 +135,9 @@ public final class WalletOverviewCalculator {
         DateTimeFormatter fullDateFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         if (mode == ChartViewMode.DAYS) {
-            // 1. THEO NGÀY: Hiển thị đầy đủ nhãn cho từng ngày trong khoảng lọc
             for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1)) {
                 ChartBucket b = new ChartBucket();
-                b.label = d.format(dayFmt); // Ví dụ: "01/08", "02/08"
+                b.label = d.format(dayFmt);
                 b.tooltipDateRange = "Ngày " + d.format(fullDateFmt);
                 b.balanceAtEnd = dailyBalance.getOrDefault(d, 0.0);
                 b.totalIncome = incomeByDate.getOrDefault(d, 0.0);
@@ -140,7 +146,6 @@ public final class WalletOverviewCalculator {
             }
 
         } else if (mode == ChartViewMode.WEEKS) {
-            // 2. THEO TUẦN: Chia khoảng thời gian thành các Tuần 1, Tuần 2, Tuần 3...
             LocalDate current = startDate;
             int weekIndex = 1;
 
@@ -171,12 +176,10 @@ public final class WalletOverviewCalculator {
             }
 
         } else if (mode == ChartViewMode.MONTHS) {
-            // 3. THEO THÁNG: Chia độ chia theo 12 THÁNG trong năm của startDate
             int year = startDate.getYear();
             DateTimeFormatter monthLabelFmt = DateTimeFormatter.ofPattern("MMM", Locale.ENGLISH);
             
             double runningBal = 0;
-            // Tìm số dư gần nhất trước đầu năm nếu có
             for (Map.Entry<LocalDate, Double> entry : dailyBalance.entrySet()) {
                 if (entry.getKey().isBefore(LocalDate.of(year, 1, 1))) {
                     runningBal = entry.getValue();
@@ -188,7 +191,7 @@ public final class WalletOverviewCalculator {
                 LocalDate mEnd = mStart.withDayOfMonth(mStart.lengthOfMonth());
 
                 ChartBucket b = new ChartBucket();
-                b.label = mStart.format(monthLabelFmt); // Ví dụ: "Jan", "Feb", "Aug"...
+                b.label = mStart.format(monthLabelFmt);
                 b.tooltipDateRange = String.format("Tháng %02d/%d", m, year);
 
                 for (LocalDate d = mStart; !d.isAfter(mEnd); d = d.plusDays(1)) {
