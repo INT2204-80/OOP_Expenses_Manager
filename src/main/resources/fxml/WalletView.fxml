@@ -60,11 +60,6 @@
             </HBox>
 
             <Region HBox.hgrow="ALWAYS" />
-
-            <!-- Profile area -->
-            <HBox alignment="CENTER_RIGHT" spacing="10">
-                <StackPane />
-            </HBox>
         </HBox>
     </top>
 
@@ -82,7 +77,7 @@
                     <HBox alignment="CENTER_LEFT" spacing="15">
                         <Button onAction="#showAddTransactionDialog" styleClass="solid-button" text="+ Add transaction" />
                         <Region HBox.hgrow="ALWAYS" />
-                        <Button fx:id="futureToggleBtn" onAction="#handleToggleFuture" styleClass="toggle-button" text="Future" />
+                        <Button styleClass="toggle-button" text="Future" />
                         <!-- Date Range Selector -->
                         <HBox alignment="CENTER" spacing="10" styleClass="date-selector">
                             <Button onAction="#handlePrevPeriod" styleClass="date-btn" text="&lt;" />
@@ -103,17 +98,17 @@
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label styleClass="summary-card-title" text="Total Period Change" />
-                            <Label fx:id="transChangeLabel" styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
+                            <Label styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
                         </VBox>
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label styleClass="summary-card-title" text="Total Period Expenses" />
-                            <Label fx:id="transExpenseLabel" styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
+                            <Label styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
                         </VBox>
 
                         <VBox styleClass="summary-card" HBox.hgrow="ALWAYS">
                             <Label styleClass="summary-card-title" text="Total Period Income" />
-                            <Label fx:id="transIncomeLabel" styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
+                            <Label styleClass="summary-card-value, value-spendee-green" text="0.00 VND" />
                         </VBox>
                     </HBox>
                     <!-- TRANSACTIONS LIST -->

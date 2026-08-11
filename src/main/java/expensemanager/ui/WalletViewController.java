@@ -75,10 +75,6 @@ public class WalletViewController {
     @FXML private Label overviewChangeLabel;
     @FXML private Label overviewExpenseLabel;
     @FXML private Label overviewIncomeLabel;
-    // Transaction tab summary labels
-    @FXML private Label transChangeLabel;
-    @FXML private Label transExpenseLabel;
-    @FXML private Label transIncomeLabel;
 
     // ===== FXML: charts =====
     @FXML private AreaChart<String, Number> balanceChart;
@@ -114,9 +110,7 @@ public class WalletViewController {
     @FXML private TextField filterMinAmountField;
     @FXML private TextField filterMaxAmountField;
     @FXML private Label resetFiltersLabel;
-    @FXML private javafx.scene.control.Button futureToggleBtn;
     private static final String ALL_CATEGORIES_SENTINEL = "All categories";
-    private boolean showFuture = false;
 
     // ===== FXML: side menu =====
     @FXML private VBox menuTransactions;
@@ -212,21 +206,9 @@ public class WalletViewController {
     }
 
     private void refreshBalanceLabels() {
-        if (currentWallet == null) return;
-
-        // Exclude future-dated transactions from the "current" balance display
-        java.time.LocalDate today = java.time.LocalDate.now();
-        double futureEffect = 0.0;
-        for (Transaction t : currentWallet.getTransactions()) {
-            if (t.getDate() != null && t.getDate().isAfter(today)) {
-                futureEffect += (t.getType() == TransactionType.INCOME) ? t.getAmount() : -t.getAmount();
-            }
-        }
-
-        double displayedBalance = currentWallet.getBalance() - futureEffect;
-        currentBalanceLabel.setText(MoneyFormat.format(displayedBalance));
+        currentBalanceLabel.setText(MoneyFormat.format(currentWallet.getBalance()));
         if (overviewBalanceLabel != null) {
-            overviewBalanceLabel.setText(MoneyFormat.format(displayedBalance));
+            overviewBalanceLabel.setText(MoneyFormat.format(currentWallet.getBalance()));
         }
     }
 
@@ -239,37 +221,13 @@ public class WalletViewController {
         String selectedCategory = filterCategoryCombo != null ? filterCategoryCombo.getValue() : null;
         String noteKeyword = filterNoteField != null ? filterNoteField.getText() : null;
 
-        TransactionFilter filter = TransactionFilter.create()
+        return TransactionFilter.create()
+                .byPeriod(currentPeriodStart, currentPeriodEnd)
                 .byCategoryName(selectedCategory, ALL_CATEGORIES_SENTINEL)
                 .byNoteContains(noteKeyword)
                 .byMinAmount(minAmount)
-                .byMaxAmount(maxAmount);
-
-        java.time.LocalDate today = java.time.LocalDate.now();
-        if (showFuture) {
-            // Show only transactions with date after today
-            filter.and(t -> t.getDate() != null && t.getDate().isAfter(today));
-        } else {
-            // Default: filter by the current period
-            filter.byPeriod(currentPeriodStart, currentPeriodEnd);
-        }
-
-        return filter.apply(currentWallet.getTransactions());
-    }
-
-    @FXML
-    private void handleToggleFuture() {
-        showFuture = !showFuture;
-        if (futureToggleBtn != null) {
-            if (showFuture) {
-                if (!futureToggleBtn.getStyleClass().contains("toggle-button-active")) {
-                    futureToggleBtn.getStyleClass().add("toggle-button-active");
-                }
-            } else {
-                futureToggleBtn.getStyleClass().remove("toggle-button-active");
-            }
-        }
-        refreshTransactionsView();
+                .byMaxAmount(maxAmount)
+                .apply(currentWallet.getTransactions());
     }
 
     private static Double parseDoubleOrNull(TextField field) {
@@ -462,15 +420,6 @@ public class WalletViewController {
             overviewChangeLabel.setStyle(change >= 0 ? "-fx-text-fill: #3b82f6;" : "-fx-text-fill: #ef4444;");
         }
 
-        // Also populate the Transactions tab summary cards (they live in the Transactions tab FXML)
-        if (transIncomeLabel != null) transIncomeLabel.setText(String.format("+%,.2f VND", overview.totalIncome));
-        if (transExpenseLabel != null) transExpenseLabel.setText(String.format("-%,.2f VND", overview.totalExpense));
-        if (transChangeLabel != null) {
-            double change = overview.totalChange();
-            transChangeLabel.setText(String.format("%s%,.2f VND", change >= 0 ? "+" : "", change));
-            transChangeLabel.setStyle(change >= 0 ? "-fx-text-fill: #3b82f6;" : "-fx-text-fill: #ef4444;");
-        }
-
         StringConverter<Number> formatterVND = new StringConverter<Number>() {
             @Override
             public String toString(Number object) {
@@ -593,7 +542,7 @@ public class WalletViewController {
         dLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #2d3748;");
         Label iLbl = new Label(String.format("Income: +%,.2f VND", incVal));
         iLbl.setStyle("-fx-text-fill: #2563eb; -fx-font-weight: bold;");
-        Label eLbl = new Label(String.format("Expense: -%,.2f VND", expVal));
+        Label eLbl = new Label(String.format("Expense: %,.2f VND", expVal));
         eLbl.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
         tbox.getChildren().addAll(dLbl, iLbl, eLbl);
         tooltip.setGraphic(tbox);
