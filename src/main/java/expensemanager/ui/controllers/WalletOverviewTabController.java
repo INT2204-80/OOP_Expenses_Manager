@@ -1,6 +1,7 @@
 package expensemanager.ui.controllers;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import core.transaction.Transaction;
@@ -35,9 +36,13 @@ public class WalletOverviewTabController {
         if (currentWallet == null) {
             return;
         }
-        periodManager.updatePeriodLabels(periodLabelOverview, periodLabelTrans);
 
-        OverviewResult overview = WalletOverviewCalculator.compute(filteredTransactions);
+        if (periodManager != null) {
+            periodManager.updatePeriodLabels(periodLabelOverview, periodLabelTrans);
+        }
+
+        List<Transaction> safeTransactions = filteredTransactions != null ? filteredTransactions : Collections.emptyList();
+        OverviewResult overview = WalletOverviewCalculator.compute(safeTransactions);
 
         if (overviewIncomeLabel != null) overviewIncomeLabel.setText(String.format("+%,.2f VND", overview.totalIncome));
         if (overviewExpenseLabel != null) overviewExpenseLabel.setText(String.format("-%,.2f VND", overview.totalExpense));
@@ -50,21 +55,25 @@ public class WalletOverviewTabController {
         StringConverter<Number> formatterVND = new StringConverter<Number>() {
             @Override
             public String toString(Number object) {
+                if (object == null) return "0 VND";
                 double val = object.doubleValue();
-                if (val == 0) return "0.00 VND";
-                return String.format("%s%,.2f VND", val > 0 ? "+" : "", val);
+                if (Math.abs(val) < 0.001) return "0 VND";
+                return String.format("%,.0f VND", val);
             }
             @Override
             public Number fromString(String string) { return null; }
         };
 
+        LocalDate startDate = periodManager != null ? periodManager.getStart() : LocalDate.now().withDayOfMonth(1);
+        LocalDate endDate = periodManager != null ? periodManager.getEnd() : LocalDate.now();
+
         Map<LocalDate, Double> dailyBalance = WalletOverviewCalculator.computeDailyBalance(
-                periodManager.getStart(), periodManager.getEnd(), overview.balanceByDate, overview.incomeByDate, overview.expenseByDate);
+                startDate, endDate, overview.balanceByDate, overview.incomeByDate, overview.expenseByDate);
 
         List<ChartBucket> balBuckets = WalletOverviewCalculator.createBuckets(
-                balanceViewMode, periodManager.getStart(), periodManager.getEnd(), dailyBalance, overview.incomeByDate, overview.expenseByDate);
+                balanceViewMode, startDate, endDate, dailyBalance, overview.incomeByDate, overview.expenseByDate);
         List<ChartBucket> chgBuckets = WalletOverviewCalculator.createBuckets(
-                changesViewMode, periodManager.getStart(), periodManager.getEnd(), dailyBalance, overview.incomeByDate, overview.expenseByDate);
+                changesViewMode, startDate, endDate, dailyBalance, overview.incomeByDate, overview.expenseByDate);
 
         WalletChartHelper.populateBalanceChart(balanceChart, balBuckets, formatterVND);
         WalletChartHelper.populateChangesChart(changesChart, chgBuckets, formatterVND);
@@ -75,13 +84,20 @@ public class WalletOverviewTabController {
     }
 
     public void updateToggleStyles(Label active, Label inactive1, Label inactive2) {
-        active.getStyleClass().remove("chart-toggle");
-        if (!active.getStyleClass().contains("chart-toggle-active")) active.getStyleClass().add("chart-toggle-active");
+        if (active != null) {
+            active.getStyleClass().remove("chart-toggle");
+            if (!active.getStyleClass().contains("chart-toggle-active")) active.getStyleClass().add("chart-toggle-active");
+        }
 
-        inactive1.getStyleClass().remove("chart-toggle-active");
-        if (!inactive1.getStyleClass().contains("chart-toggle")) inactive1.getStyleClass().add("chart-toggle");
+        if (inactive1 != null) {
+            inactive1.getStyleClass().remove("chart-toggle-active");
+            if (!inactive1.getStyleClass().contains("chart-toggle")) inactive1.getStyleClass().add("chart-toggle");
+        }
 
-        inactive2.getStyleClass().remove("chart-toggle-active");
-        if (!inactive2.getStyleClass().contains("chart-toggle")) inactive2.getStyleClass().add("chart-toggle");
+        if (inactive2 != null) {
+            inactive2.getStyleClass().remove("chart-toggle-active");
+            if (!inactive2.getStyleClass().contains("chart-toggle")) inactive2.getStyleClass().add("chart-toggle");
+        }
     }
+    
 }

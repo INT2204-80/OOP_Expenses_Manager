@@ -250,7 +250,7 @@ public class WalletViewController {
     @FXML private void handleBalMonths() { overviewTabController.setBalanceViewMode(ChartViewMode.MONTHS); overviewTabController.updateToggleStyles(balMonthsLbl, balDaysLbl, balWeeksLbl); updateOverviewData(); }
     @FXML private void handleChgDays() { overviewTabController.setChangesViewMode(ChartViewMode.DAYS); overviewTabController.updateToggleStyles(chgDaysLbl, chgWeeksLbl, chgMonthsLbl); updateOverviewData(); }
     @FXML private void handleChgWeeks() { overviewTabController.setChangesViewMode(ChartViewMode.WEEKS); overviewTabController.updateToggleStyles(chgWeeksLbl, chgDaysLbl, chgMonthsLbl); updateOverviewData(); }
-    @FXML private void handleChgMonths() { overviewTabController.setChangesViewMode(ChartViewMode.MONTHS); overviewTabController.updateToggleStyles(chgMonthsLbl, chgDaysLbl, chgMonthsLbl); updateOverviewData(); }
+    @FXML private void handleChgMonths() { overviewTabController.setChangesViewMode(ChartViewMode.MONTHS); overviewTabController.updateToggleStyles(chgMonthsLbl, chgDaysLbl, chgWeeksLbl); updateOverviewData(); }
 
     @FXML private void handleCreateCategory() {
         categoryManager.handleCreateCategory(newCategoryNameField, categoryTypeCombo, categoryIconCombo, categoryColorCombo, incomeCategoriesContainer, expenseCategoriesContainer, this::setupFilters);
