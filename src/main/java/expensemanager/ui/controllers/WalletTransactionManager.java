@@ -1,5 +1,6 @@
 package expensemanager.ui.controllers;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -63,8 +64,14 @@ public class WalletTransactionManager {
         String selectedCategory = filterCategoryCombo != null ? filterCategoryCombo.getValue() : null;
         String noteKeyword = filterNoteField != null ? filterNoteField.getText() : null;
 
-        return TransactionFilter.create()
-                .byPeriod(periodManager.getStart(), periodManager.getEnd())
+        TransactionFilter filter = TransactionFilter.create()
+                .byFutureMode(LocalDate.now(), periodManager.isFutureOnly());
+
+        if (!periodManager.isFutureOnly()) {
+            filter.byPeriod(periodManager.getStart(), periodManager.getEnd());
+        }
+
+        return filter
                 .byCategoryName(selectedCategory, ALL_CATEGORIES_SENTINEL)
                 .byNoteContains(noteKeyword)
                 .byMinAmount(minAmount)

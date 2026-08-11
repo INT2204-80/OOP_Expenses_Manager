@@ -2,6 +2,7 @@ package expensemanager.ui.controllers;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 import core.storage.BudgetDAO;
 import core.storage.TransactionDAO;
@@ -18,6 +19,9 @@ import javafx.scene.Parent;
 import javafx.scene.chart.AreaChart;
 import javafx.scene.chart.PieChart;
 import javafx.scene.chart.StackedBarChart;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -123,9 +127,12 @@ public class WalletViewController {
     @FXML private TextField newCategoryNameField;
     @FXML private VBox incomeCategoriesContainer;
     @FXML private VBox expenseCategoriesContainer;
+    @FXML private TextField settingInitialBalance;
+    @FXML private TextField settingCurrency;
 
     @FXML private Label periodLabelOverview;
     @FXML private Label periodLabelTrans;
+    @FXML private Button futureToggleButton;
 
     private Wallet currentWallet;
 
@@ -134,10 +141,7 @@ public class WalletViewController {
     // =========================================================================
     public void initData(Wallet wallet) {
         this.currentWallet = wallet;
-
-        List<Transaction> loadedTransactions = transactionService.getTransactionsByWallet(wallet);
-        wallet.getTransactions().clear();
-        wallet.getTransactions().addAll(loadedTransactions);
+        reloadTransactionsFromStore();
 
         walletNameTopLabel.setText(wallet.getName());
         refreshBalanceLabels();
@@ -153,7 +157,17 @@ public class WalletViewController {
                 filterMaxAmountField, categoryManager.getAllCategories(), this::refreshTransactionsView);
     }
 
+    private void reloadTransactionsFromStore() {
+        if (currentWallet == null) {
+            return;
+        }
+        List<Transaction> loadedTransactions = transactionService.getTransactionsByWallet(currentWallet);
+        currentWallet.getTransactions().clear();
+        currentWallet.getTransactions().addAll(loadedTransactions);
+    }
+
     private void refreshTransactionsView() {
+        reloadTransactionsFromStore();
         updateOverviewData();
         List<Transaction> filtered = transactionManager.getFilteredTransactions(
                 currentWallet, periodManager, filterCategoryCombo, filterNoteField, filterMinAmountField, filterMaxAmountField);
@@ -167,10 +181,27 @@ public class WalletViewController {
     }
 
     private void refreshBalanceLabels() {
-        currentBalanceLabel.setText(MoneyFormat.format(currentWallet.getBalance()));
+        double displayBalance = calculateDisplayBalance(currentWallet);
+        currentBalanceLabel.setText(MoneyFormat.format(displayBalance));
         if (overviewBalanceLabel != null) {
-            overviewBalanceLabel.setText(MoneyFormat.format(currentWallet.getBalance()));
+            overviewBalanceLabel.setText(MoneyFormat.format(displayBalance));
         }
+    }
+
+    private double calculateDisplayBalance(Wallet wallet) {
+        if (wallet == null) {
+            return 0.0;
+        }
+        double balance = wallet.getBalance();
+        if (wallet.getTransactions() == null) {
+            return balance;
+        }
+        for (Transaction transaction : wallet.getTransactions()) {
+            if (transaction != null && transaction.getDate() != null && transaction.getDate().isAfter(java.time.LocalDate.now())) {
+                balance -= transaction.getSignedAmount();
+            }
+        }
+        return balance;
     }
 
     private void updateOverviewData() {
@@ -191,6 +222,17 @@ public class WalletViewController {
     @FXML public void handlePrevPeriod() { periodManager.handlePrevPeriod(this::refreshTransactionsView); }
     @FXML public void handleNextPeriod() { periodManager.handleNextPeriod(this::refreshTransactionsView); }
     @FXML public void handleCustomPeriod() { periodManager.handleCustomPeriod(this::refreshTransactionsView); }
+
+    @FXML private void handleFutureToggle() {
+        periodManager.setFutureOnly(!periodManager.isFutureOnly());
+        if (futureToggleButton != null) {
+            futureToggleButton.getStyleClass().remove("toggle-button-active");
+            if (periodManager.isFutureOnly()) {
+                futureToggleButton.getStyleClass().add("toggle-button-active");
+            }
+        }
+        refreshTransactionsView();
+    }
 
     @FXML private void showAddTransactionDialog() {
         transactionManager.showAddTransactionDialog(categoryManager.getAllCategories(), currentWallet, () -> {
@@ -288,4 +330,78 @@ public class WalletViewController {
             e.printStackTrace();
         }
     }
+    @FXML
+    private void handleDeleteWallet(MouseEvent event) {
+        // 1. Tạo Alert xác nhận
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirmation");
+        alert.setHeaderText("Confirmation");
+        alert.setContentText("Are you sure you want to delete this wallet?");
+
+        // 2. Đổi các nút bấm mặc định thành Yes và No
+        alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+
+        // 3. Hiển thị dialog và xử lý kết quả khi bấm
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.YES) {
+            
+            // TODO: Gọi hàm xóa Ví khỏi Database/Danh sách ví của bạn ở đây
+            // ví dụ: walletService.deleteWallet(currentWallet);
+
+            // 4. Xóa thành công -> Quay trở lại màn hình Dashboard
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Dashboard.fxml"));
+                Parent root = loader.load();
+                
+                Stage stage = (Stage) ((javafx.scene.Node) event.getSource()).getScene().getWindow();
+                stage.getScene().setRoot(root);
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.err.println("Lỗi khi quay về Dashboard: " + e.getMessage());
+            }
+        }
+    }
+    @FXML
+    private void handleUpdateWalletSettings() {
+        String newName = settingWalletName.getText().trim();
+        String initialBalanceStr = settingInitialBalance.getText().trim();
+        String currency = settingCurrency.getText().trim();
+
+        // Kiểm tra tên ví không được trống
+        if (newName.isEmpty()) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi", "Tên ví không được để trống!");
+            return;
+        }
+
+        try {
+            double initialBalance = Double.parseDouble(initialBalanceStr);
+
+            // TODO: Cập nhật thông tin Ví vào Database / Model của bạn
+            // currentWallet.setName(newName);
+            // currentWallet.setInitialBalance(initialBalance);
+            // currentWallet.setCurrency(currency);
+            // walletService.updateWallet(currentWallet);
+
+            // Cập nhật lại tên ví trên thanh Tiêu đề (Navigation Top) ngay lập tức
+            if (walletNameTopLabel != null) {
+                walletNameTopLabel.setText(newName);
+            }
+
+            // Hiển thị thông báo thành công
+            showAlert(Alert.AlertType.INFORMATION, "Success", "Wallet settings updated successfully!");
+
+        } catch (NumberFormatException e) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi định dạng", "Số dư ban đầu phải là một số hợp lệ!");
+        }
+    }
+
+    // Hàm tiện ích hiển thị thông báo Alert
+    private void showAlert(Alert.AlertType alertType, String title, String message) {
+        Alert alert = new Alert(alertType);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
 }

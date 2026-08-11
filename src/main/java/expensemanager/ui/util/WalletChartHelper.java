@@ -177,4 +177,5 @@ public class WalletChartHelper {
                 + "-fx-border-color: #e2e8f0; -fx-border-radius: 4px;");
         return tbox;
     }
+    
 }

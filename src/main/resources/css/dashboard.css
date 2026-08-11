@@ -140,6 +140,12 @@
     -fx-cursor: hand;
 }
 
+.toggle-button-active {
+    -fx-background-color: #111827;
+    -fx-text-fill: white;
+    -fx-border-color: #111827;
+}
+
 /* Tabs */
 .nav-item-active-container {
     -fx-border-color: transparent transparent #2563eb transparent;

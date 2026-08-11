@@ -1,5 +1,15 @@
 package core.storage;
 
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
+
 import core.Category;
 import core.TransactionType;
 import core.transaction.Expense;
@@ -7,20 +17,23 @@ import core.transaction.Income;
 import core.transaction.Transaction;
 import core.wallet.Wallet;
 
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-
 public class TransactionDAO {
     
     static {
-        // Ensure recurring columns exist
+        ensureSchemaColumns();
+    }
+
+    private static void ensureSchemaColumns() {
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement()) {
             try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE"); } catch (SQLException e) {}
             try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN recurring_period VARCHAR(50)"); } catch (SQLException e) {}
             try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN passed_periods INT DEFAULT 0"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN icon VARCHAR(255)"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN color VARCHAR(255)"); } catch (SQLException e) {}
         } catch (SQLException e) {
+            System.err.println("Warning: could not ensure database schema columns: " + e.getMessage());
         }
     }
     
@@ -37,13 +50,15 @@ public class TransactionDAO {
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
                     int id = rs.getInt("id");
-                    String updateSql = "UPDATE categories SET icon = ?, color = ?, is_deleted = FALSE WHERE id = ?";
+                    if (icon != null || color != null) {
+                        String updateSql = "UPDATE categories SET icon = ?, color = ?, is_deleted = FALSE WHERE id = ?";
                         try (PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-                            updateStmt.setString(1, icon);
-                            updateStmt.setString(2, color);
+                            updateStmt.setString(1, icon != null ? icon : "");
+                            updateStmt.setString(2, color != null ? color : "");
                             updateStmt.setInt(3, id);
                             updateStmt.executeUpdate();
                         }
+                    }
                     return id;
                 }
             }
@@ -65,15 +80,7 @@ public class TransactionDAO {
     }
 
     public List<Category> getAllCategories() {
-        // Ensure is_deleted, icon, color columns exist
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"); } catch (SQLException e) {}
-            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN icon VARCHAR(255)"); } catch (SQLException e) {}
-            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN color VARCHAR(255)"); } catch (SQLException e) {}
-        } catch (SQLException e) {
-            // Ignore outer connection errors here, let them fail below
-        }
+        ensureSchemaColumns();
 
         List<Category> categories = new ArrayList<>();
         String selectSql = "SELECT * FROM categories WHERE is_deleted = FALSE OR is_deleted IS NULL";
@@ -217,7 +224,11 @@ public class TransactionDAO {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
              
-            int categoryId = getOrCreateCategoryId(t.getCategory().getName(), t.getType().name());
+            int categoryId = getOrCreateCategoryId(
+                    t.getCategory().getName(),
+                    t.getType().name(),
+                    t.getCategory().getIcon(),
+                    t.getCategory().getColor());
              
             pstmt.setDouble(1, t.getAmount());
             pstmt.setDate(2, Date.valueOf(t.getDate()));
@@ -282,7 +293,11 @@ public class TransactionDAO {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
              
-            int categoryId = getOrCreateCategoryId(t.getCategory().getName(), t.getType().name());
+            int categoryId = getOrCreateCategoryId(
+                    t.getCategory().getName(),
+                    t.getType().name(),
+                    t.getCategory().getIcon(),
+                    t.getCategory().getColor());
              
             pstmt.setDouble(1, t.getAmount());
             pstmt.setDate(2, Date.valueOf(t.getDate()));
@@ -333,7 +348,7 @@ public class TransactionDAO {
 
     public List<Transaction> getTransactionsByWallet(Wallet wallet) {
         List<Transaction> transactions = new ArrayList<>();
-        String selectSql = "SELECT t.*, c.name AS category_name FROM transactions t LEFT JOIN categories c ON t.category_id = c.id WHERE t.wallet_id = ?";
+        String selectSql = "SELECT t.*, c.name AS category_name, c.icon AS category_icon, c.color AS category_color FROM transactions t LEFT JOIN categories c ON t.category_id = c.id WHERE t.wallet_id = ?";
         
         double originalBalance = wallet.getBalance(); // Save original balance
         
@@ -349,9 +364,13 @@ public class TransactionDAO {
                     String note = rs.getString("note");
                     String typeStr = rs.getString("transaction_type");
                     String catName = rs.getString("category_name");
+                    String icon = rs.getString("category_icon");
+                    String color = rs.getString("category_color");
                     if (catName == null) catName = "Unknown";
+                    if (icon == null) icon = "";
+                    if (color == null) color = "";
                     
-                    Category cat = new Category(catName, TransactionType.valueOf(typeStr));
+                    Category cat = new Category(catName, TransactionType.valueOf(typeStr), icon, color);
                     
                     Transaction t;
                     if ("INCOME".equals(typeStr)) {

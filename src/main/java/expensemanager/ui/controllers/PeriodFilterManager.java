@@ -14,6 +14,7 @@ import javafx.util.Pair;
 public class PeriodFilterManager {
     private LocalDate currentPeriodStart = LocalDate.now().withDayOfMonth(1);
     private LocalDate currentPeriodEnd = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
+    private boolean futureOnly = false;
 
     public LocalDate getStart() {
         return currentPeriodStart;
@@ -21,6 +22,14 @@ public class PeriodFilterManager {
 
     public LocalDate getEnd() {
         return currentPeriodEnd;
+    }
+
+    public boolean isFutureOnly() {
+        return futureOnly;
+    }
+
+    public void setFutureOnly(boolean futureOnly) {
+        this.futureOnly = futureOnly;
     }
 
     public void handlePrevPeriod(Runnable onPeriodChanged) {

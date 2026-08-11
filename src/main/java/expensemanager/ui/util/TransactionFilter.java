@@ -1,11 +1,11 @@
 package expensemanager.ui.util;
 
-import core.transaction.Transaction;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import core.transaction.Transaction;
 
 /**
  * Thay thế cho getFilteredTransactions() trong controller gốc.
@@ -27,6 +27,14 @@ public final class TransactionFilter {
     public TransactionFilter byPeriod(LocalDate start, LocalDate end) {
         if (start != null && end != null) {
             predicate = predicate.and(t -> !t.getDate().isBefore(start) && !t.getDate().isAfter(end));
+        }
+        return this;
+    }
+
+    public TransactionFilter byFutureMode(LocalDate referenceDate, boolean futureOnly) {
+        if (futureOnly) {
+            LocalDate today = referenceDate != null ? referenceDate : LocalDate.now();
+            predicate = predicate.and(t -> t.getDate() != null && t.getDate().isAfter(today));
         }
         return this;
     }

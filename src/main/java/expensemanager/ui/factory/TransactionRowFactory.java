@@ -43,7 +43,7 @@ public final class TransactionRowFactory {
         iconPane.getChildren().add(new Circle(20, fxColor));
         if (t.getCategory().getIcon() != null && !t.getCategory().getIcon().isEmpty()) {
             Label iconLabel = new Label(t.getCategory().getIcon());
-            iconLabel.setStyle("-fx-text-fill: white; -fx-font-size: 18px;");
+            iconLabel.setStyle("-fx-font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif; -fx-text-fill: white; -fx-font-size: 18px;");
             iconPane.getChildren().add(iconLabel);
         }
 
