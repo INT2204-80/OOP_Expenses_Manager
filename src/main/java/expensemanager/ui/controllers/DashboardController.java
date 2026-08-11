@@ -140,7 +140,7 @@ public class DashboardController {
             // 2. Kiểm tra Controller
             WalletViewController controller = loader.getController();
             if (controller == null) {
-                showErrorAlert("Lỗi Controller", "File WalletView.fxml chưa khai báo fx:controller=\"expensemanager.ui.WalletViewController\"");
+                showErrorAlert("Lỗi Controller", "File WalletView.fxml chưa khai báo fx:controller=\"expensemanager.ui.controllers.WalletViewController\"");
                 return;
             }
 
