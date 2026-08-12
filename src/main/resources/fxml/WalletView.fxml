@@ -66,6 +66,39 @@
     <!-- CENTER CONTENT -->
     <center>
         <javafx.scene.control.ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;">
+            <VBox>
+                <!-- SHARED FILTERS BAR (dung chung cho ca Transactions va Overview de dam bao dong bo) -->
+                <VBox fx:id="sharedFiltersBar" spacing="10" styleClass="content-area">
+                    <padding>
+                        <Insets bottom="0" left="60" right="60" top="30" />
+                    </padding>
+                    <HBox alignment="CENTER_LEFT">
+                        <Label styleClass="filters-title" text="Filters" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Label fx:id="resetFiltersLabel" onMouseClicked="#handleResetFilters" styleClass="filters-reset" text="Reset filters" />
+                    </HBox>
+                    <HBox spacing="20">
+                        <VBox spacing="5" HBox.hgrow="ALWAYS">
+                            <Label styleClass="settings-field-label" text="By category" />
+                            <javafx.scene.control.ComboBox fx:id="filterCategoryCombo" maxWidth="Infinity" promptText="All categories" styleClass="filter-box" />
+                        </VBox>
+
+                        <VBox spacing="5" HBox.hgrow="ALWAYS">
+                            <Label styleClass="settings-field-label" text="By note" />
+                            <javafx.scene.control.TextField fx:id="filterNoteField" promptText="Filter by specific keyword" styleClass="filter-box" />
+                        </VBox>
+
+                        <VBox spacing="5" HBox.hgrow="ALWAYS">
+                            <Label styleClass="settings-field-label" text="By amount" />
+                            <HBox spacing="10">
+                                <javafx.scene.control.TextField fx:id="filterMinAmountField" promptText="Min (VND)" styleClass="filter-box" HBox.hgrow="ALWAYS" />
+                                <Label style="-fx-text-fill: #a0aec0; -fx-padding: 5 0 0 0;" text="-" />
+                                <javafx.scene.control.TextField fx:id="filterMaxAmountField" promptText="Max (VND)" styleClass="filter-box" HBox.hgrow="ALWAYS" />
+                            </HBox>
+                        </VBox>
+                    </HBox>
+                </VBox>
+
             <StackPane>
                 <!-- TRANSACTIONS TAB -->
                 <VBox fx:id="tabTransactions" spacing="30" styleClass="content-area">
@@ -153,34 +186,7 @@
                         </HBox>
                     </HBox>
 
-                    <!-- Filters Section -->
-                    <VBox spacing="10">
-                        <HBox alignment="CENTER_LEFT">
-                            <Label styleClass="filters-title" text="Filters" />
-                            <Region HBox.hgrow="ALWAYS" />
-                            <Label fx:id="resetFiltersLabel" onMouseClicked="#handleResetFilters" styleClass="filters-reset" text="Reset filters" />
-                        </HBox>
-                        <HBox spacing="20">
-                            <VBox spacing="5" HBox.hgrow="ALWAYS">
-                                <Label styleClass="settings-field-label" text="By category" />
-                                <javafx.scene.control.ComboBox fx:id="filterCategoryCombo" maxWidth="Infinity" promptText="All categories" styleClass="filter-box" />
-                            </VBox>
-                            
-                            <VBox spacing="5" HBox.hgrow="ALWAYS">
-                                <Label styleClass="settings-field-label" text="By note" />
-                                <javafx.scene.control.TextField fx:id="filterNoteField" promptText="Filter by specific keyword" styleClass="filter-box" />
-                            </VBox>
-                            
-                            <VBox spacing="5" HBox.hgrow="ALWAYS">
-                                <Label styleClass="settings-field-label" text="By amount" />
-                                <HBox spacing="10">
-                                    <javafx.scene.control.TextField fx:id="filterMinAmountField" promptText="Min (VND)" styleClass="filter-box" HBox.hgrow="ALWAYS" />
-                                    <Label style="-fx-text-fill: #a0aec0; -fx-padding: 5 0 0 0;" text="-" />
-                                    <javafx.scene.control.TextField fx:id="filterMaxAmountField" promptText="Max (VND)" styleClass="filter-box" HBox.hgrow="ALWAYS" />
-                                </HBox>
-                            </VBox>
-                        </HBox>
-                    </VBox>
+                    <!-- Filters Section: da chuyen ra sharedFiltersBar o ngoai, dung chung voi tab Transactions -->
 
                     <!-- 4 Summary Cards -->
                     <HBox alignment="CENTER_LEFT" spacing="20">
@@ -338,7 +344,7 @@
                                 <VBox spacing="5" HBox.hgrow="ALWAYS">
                                     <Label styleClass="settings-field-label" text="Wallet currency" />
                                     <!-- BỔ SUNG: fx:id="settingCurrency" (để tránh bị lỗi NullPointerException tiếp theo) -->
-                                    <javafx.scene.control.TextField fx:id="settingCurrency" styleClass="settings-textfield" text="VND" />
+                                    <javafx.scene.control.TextField fx:id="settingCurrency" disable="true" styleClass="settings-textfield" text="VND" />
                                 </VBox>
                             </HBox>
                             
@@ -405,6 +411,7 @@
                     </StackPane>
                 </HBox>
             </StackPane>
+            </VBox>
         </javafx.scene.control.ScrollPane>
     </center>
 

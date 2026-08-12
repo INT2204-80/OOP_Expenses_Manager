@@ -47,6 +47,11 @@ public class TransactionDialogFactory {
         periodCombo.getSelectionModel().select("Hàng tháng");
         periodCombo.setDisable(true);
 
+        Label endDateLabel = new Label("Ngày kết thúc (tuỳ chọn):");
+        DatePicker endDatePicker = new DatePicker();
+        endDatePicker.setPromptText("Không giới hạn");
+        endDatePicker.setDisable(true);
+
         // Hàm cập nhật trạng thái Disable cho checkbox Lặp lại dựa vào loại Danh mục
         Runnable updateRecurringState = () -> {
             String selectedCatName = categoryCombo.getValue();
@@ -59,9 +64,11 @@ public class TransactionDialogFactory {
                 recurringCheck.setSelected(false);
                 recurringCheck.setDisable(true);
                 periodCombo.setDisable(true);
+                endDatePicker.setDisable(true);
             } else {
                 recurringCheck.setDisable(false);
                 periodCombo.setDisable(!recurringCheck.isSelected());
+                endDatePicker.setDisable(!recurringCheck.isSelected());
             }
         };
 
@@ -75,10 +82,14 @@ public class TransactionDialogFactory {
                 // that da luu cua oldT, nen luc Sua luon hien mac dinh "Hang thang"
                 // du chu ky that la gi. Phai anh xa nguoc java.time.Period -> core.Period
                 // roi chon dung item trong periodCombo.
-                java.time.Period savedPeriod = ((RecurringExpense) oldT).getPeriod();
+                RecurringExpense oldRe = (RecurringExpense) oldT;
+                java.time.Period savedPeriod = oldRe.getPeriod();
                 String displayName = mapToDisplayName(savedPeriod);
                 if (displayName != null) {
                     periodCombo.getSelectionModel().select(displayName);
+                }
+                if (oldRe.getEndDate() != null) {
+                    endDatePicker.setValue(oldRe.getEndDate());
                 }
             }
         } else if (!categoryCombo.getItems().isEmpty()) {
@@ -87,13 +98,20 @@ public class TransactionDialogFactory {
         
         updateRecurringState.run();
 
-        recurringCheck.setOnAction(e -> periodCombo.setDisable(!recurringCheck.isSelected()));
+        recurringCheck.setOnAction(e -> {
+            periodCombo.setDisable(!recurringCheck.isSelected());
+            endDatePicker.setDisable(!recurringCheck.isSelected());
+            if (!recurringCheck.isSelected()) {
+                endDatePicker.setValue(null);
+            }
+        });
 
         grid.add(new Label("Danh mục:"), 0, 0); grid.add(categoryCombo, 1, 0);
         grid.add(new Label("Ngày:"), 0, 1);      grid.add(datePicker, 1, 1);
         grid.add(new Label("Ghi chú:"), 0, 2);   grid.add(noteField, 1, 2);
         grid.add(new Label("Số tiền:"), 0, 3);  grid.add(amountField, 1, 3);
         grid.add(recurringCheck, 0, 4);          grid.add(periodCombo, 1, 4);
+        grid.add(endDateLabel, 0, 5);            grid.add(endDatePicker, 1, 5);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -124,7 +142,16 @@ public class TransactionDialogFactory {
                     if (amt > currentBal) {
                         showError("Số tiền chi tiêu vượt quá số dư ví khả dụng!");
                         event.consume();
+                        return;
                     }
+                }
+
+                // Kiểm tra Ngày kết thúc (nếu có nhập) không được trước Ngày bắt đầu
+                if (recurringCheck.isSelected() && endDatePicker.getValue() != null
+                        && datePicker.getValue() != null
+                        && endDatePicker.getValue().isBefore(datePicker.getValue())) {
+                    showError("Ngày kết thúc không được trước ngày bắt đầu!");
+                    event.consume();
                 }
             } catch (NumberFormatException e) {
                 showError("Số tiền không hợp lệ!");
@@ -150,7 +177,8 @@ public class TransactionDialogFactory {
                 } else if (recurringCheck.isSelected()) {
                     core.Period corePeriod = mapToCorePeriod(periodCombo.getValue());
                     java.time.Period p = corePeriod.toJavaPeriod();
-                    return new RecurringExpense(id, amount, date, note, cat, wallet, catName, p);
+                    LocalDate endDate = endDatePicker.getValue();
+                    return new RecurringExpense(id, amount, date, note, cat, wallet, catName, p, endDate);
                 } else {
                     return new Expense(id, amount, date, note, cat, wallet, catName);
                 }

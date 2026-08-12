@@ -28,7 +28,7 @@ public class BudgetDialogFactory {
     /** So ky tu toi da cho ten ngan sach, tranh nhap qua dai lam vo layout. */
     private static final int MAX_NAME_LENGTH = 100;
     /** Han muc toi da hop ly (10 ty VND) de tranh nhap nham qua nhieu so 0. */
-    private static final double MAX_AMOUNT = 10_000_000_000.0;
+    private static final double MAX_AMOUNT = 10_000_000_000_000.0;
 
     public static Dialog<Budget> createAddBudgetDialog(List<Category> availableCategories) {
         return buildDialog(null, availableCategories);
@@ -43,6 +43,15 @@ public class BudgetDialogFactory {
             throw new IllegalArgumentException("existingBudget khong duoc null");
         }
         return buildDialog(existingBudget, availableCategories);
+    }
+
+    /**
+     * Chuyen doi mot so double thanh chuoi so day du, khong dung ky hieu khoa
+     * hoc (vi du: 1.0E10 -> 10000000000).
+     */
+    private static String formatPlainNumber(double value) {
+        java.math.BigDecimal bd = new java.math.BigDecimal(String.valueOf(value));
+        return bd.stripTrailingZeros().toPlainString();
     }
 
     private static Dialog<Budget> buildDialog(Budget existingBudget, List<Category> availableCategories) {
@@ -126,7 +135,7 @@ public class BudgetDialogFactory {
         // --- Dien san du lieu khi o che do Sua ---
         if (isEdit) {
             nameField.setText(existingBudget.getName());
-            amountField.setText(String.valueOf(existingBudget.getLimitAmount()));
+            amountField.setText(formatPlainNumber(existingBudget.getLimitAmount()));
 
             if (existingBudget.getCategory() != null
                     && categoryBox.getItems().contains(existingBudget.getCategory().getName())) {

@@ -47,9 +47,6 @@ public class WalletViewController {
     private final WalletCategoryManager categoryManager;
     private final WalletBudgetManager budgetManager;
 
-    /** Han muc toi da hop ly cho so du (10 ty VND), dung chung voi BudgetDialogFactory. */
-    private static final double MAX_BALANCE = 10_000_000_000_000_000.0;
-
     // Constructors
     public WalletViewController() {
         this.transactionDAO = new TransactionDAO();
@@ -112,7 +109,8 @@ public class WalletViewController {
     @FXML private VBox budgetsContainer;
     @FXML private HBox tabSettings;
 
-    // ===== FXML Filters =====
+    // ===== FXML Filters (dung chung cho ca Transactions va Overview) =====
+    @FXML private VBox sharedFiltersBar;
     @FXML private ComboBox<String> filterCategoryCombo;
     @FXML private TextField filterNoteField;
     @FXML private TextField filterMinAmountField;
@@ -188,6 +186,15 @@ public class WalletViewController {
                     refreshTransactionsView();
                     refreshBalanceLabels();
                 });
+    }
+
+    /**
+     * Chuyen doi mot so double thanh chuoi so day du, khong dung ky hieu khoa
+     * hoc (vi du: 8.8888174282E13 -> 88888174282000).
+     */
+    private String formatPlainNumber(double value) {
+        java.math.BigDecimal bd = new java.math.BigDecimal(String.valueOf(value));
+        return bd.stripTrailingZeros().toPlainString();
     }
 
     private void refreshBalanceLabels() {
@@ -309,7 +316,7 @@ public class WalletViewController {
         switchTab(tabSettings, menuSettings);
         if (settingWalletName != null && currentWallet != null) {
             settingWalletName.setText(currentWallet.getName());
-            settingInitialBalance.setText(MoneyFormat.format(currentWallet.getBalance()));
+            settingInitialBalance.setText(formatPlainNumber(currentWallet.getBalance()));
             settingCurrency.setText("VND");
         }
     }
@@ -320,6 +327,14 @@ public class WalletViewController {
         tabBudgets.setVisible(false);
         tabSettings.setVisible(false);
         tab.setVisible(true);
+
+        // Thanh Filters dung chung: chi hien thi khi dang o tab Transactions
+        // hoac Overview, vi 2 tab nay cung dung chung 1 bo gia tri loc.
+        if (sharedFiltersBar != null) {
+            boolean showFilters = (tab == tabTransactions || tab == tabOverview);
+            sharedFiltersBar.setVisible(showFilters);
+            sharedFiltersBar.setManaged(showFilters);
+        }
 
         for (VBox m : List.of(menuTransactions, menuOverview, menuBudgets, menuSettings)) {
             m.getStyleClass().remove("nav-item-active-container");
@@ -390,9 +405,8 @@ public class WalletViewController {
     @FXML
     private void handleUpdateWalletSettings() {
         String newName = settingWalletName.getText().trim();
-        // Cho phep nguoi dung go co dau phay ngan cach (vi da hien thi dang
-        // MoneyFormat) hoac go tay so thuan.
-        String initialBalanceStr = settingInitialBalance.getText().replaceAll(",", "").trim();
+        String initialBalanceStr = settingInitialBalance.getText().trim();
+        String currency = settingCurrency.getText().trim();
 
         // Kiểm tra tên ví không được trống
         if (newName.isEmpty()) {
@@ -400,50 +414,28 @@ public class WalletViewController {
             return;
         }
 
-        if (initialBalanceStr.isEmpty()) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi", "Vui lòng nhập số dư ban đầu!");
-            return;
-        }
-
-        double initialBalance;
         try {
-            initialBalance = Double.parseDouble(initialBalanceStr);
+            double initialBalance = Double.parseDouble(initialBalanceStr);
+
+            if (currentWallet == null) {
+                showAlert(Alert.AlertType.ERROR, "Lỗi", "Không có ví để cập nhật.");
+                return;
+            }
+
+            currentWallet.setName(newName);
+            currentWallet.setBalance(initialBalance);
+            walletDAO.updateWallet(currentWallet);
+
+            if (walletNameTopLabel != null) {
+                walletNameTopLabel.setText(newName);
+            }
+            refreshBalanceLabels();
+
+            showAlert(Alert.AlertType.INFORMATION, "Success", "Wallet settings updated successfully!");
+
         } catch (NumberFormatException e) {
             showAlert(Alert.AlertType.ERROR, "Lỗi định dạng", "Số dư ban đầu phải là một số hợp lệ!");
-            return;
         }
-
-        if (!Double.isFinite(initialBalance)) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi định dạng", "Số dư ban đầu không hợp lệ!");
-            return;
-        }
-
-        if (initialBalance < 0) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi", "Số dư ban đầu không được là số âm!");
-            return;
-        }
-
-        if (initialBalance > MAX_BALANCE) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi",
-                    String.format("Số dư ban đầu không được vượt quá %,.0f VND!", MAX_BALANCE));
-            return;
-        }
-
-        if (currentWallet == null) {
-            showAlert(Alert.AlertType.ERROR, "Lỗi", "Không có ví để cập nhật.");
-            return;
-        }
-
-        currentWallet.setName(newName);
-        currentWallet.setBalance(initialBalance);
-        walletDAO.updateWallet(currentWallet);
-
-        if (walletNameTopLabel != null) {
-            walletNameTopLabel.setText(newName);
-        }
-        refreshBalanceLabels();
-
-        showAlert(Alert.AlertType.INFORMATION, "Success", "Wallet settings updated successfully!");
     }
 
     // Hàm tiện ích hiển thị thông báo Alert

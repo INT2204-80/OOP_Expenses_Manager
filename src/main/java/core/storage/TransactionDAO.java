@@ -29,6 +29,7 @@ public class TransactionDAO {
             try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE"); } catch (SQLException e) {}
             try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN recurring_period VARCHAR(50)"); } catch (SQLException e) {}
             try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN passed_periods INT DEFAULT 0"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN recurring_end_date DATE"); } catch (SQLException e) {}
             try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"); } catch (SQLException e) {}
             try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN icon VARCHAR(255)"); } catch (SQLException e) {}
             try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN color VARCHAR(255)"); } catch (SQLException e) {}
@@ -220,7 +221,7 @@ public class TransactionDAO {
     }
 
     public void saveTransaction(Transaction t, int walletId) {
-        String insertSql = "INSERT INTO transactions (amount, date, note, category_id, wallet_id, transaction_type, source, payment_method, is_recurring, recurring_period, passed_periods) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String insertSql = "INSERT INTO transactions (amount, date, note, category_id, wallet_id, transaction_type, source, payment_method, is_recurring, recurring_period, passed_periods, recurring_end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
              
@@ -243,6 +244,7 @@ public class TransactionDAO {
                 pstmt.setBoolean(9, false);
                 pstmt.setNull(10, Types.VARCHAR);
                 pstmt.setInt(11, 0);
+                pstmt.setNull(12, Types.DATE);
             } else if (t instanceof core.transaction.RecurringExpense) {
                 core.transaction.RecurringExpense re = (core.transaction.RecurringExpense) t;
                 pstmt.setNull(7, Types.VARCHAR);
@@ -250,18 +252,25 @@ public class TransactionDAO {
                 pstmt.setBoolean(9, true);
                 pstmt.setString(10, re.getPeriod().toString()); // e.g. P1M
                 pstmt.setInt(11, re.getPassedPeriods());
+                if (re.getEndDate() != null) {
+                    pstmt.setDate(12, Date.valueOf(re.getEndDate()));
+                } else {
+                    pstmt.setNull(12, Types.DATE);
+                }
             } else if (t instanceof Expense) {
                 pstmt.setNull(7, Types.VARCHAR);
                 pstmt.setString(8, ((Expense) t).getPaymentMethod());
                 pstmt.setBoolean(9, false);
                 pstmt.setNull(10, Types.VARCHAR);
                 pstmt.setInt(11, 0);
+                pstmt.setNull(12, Types.DATE);
             } else {
                 pstmt.setNull(7, Types.VARCHAR);
                 pstmt.setNull(8, Types.VARCHAR);
                 pstmt.setBoolean(9, false);
                 pstmt.setNull(10, Types.VARCHAR);
                 pstmt.setInt(11, 0);
+                pstmt.setNull(12, Types.DATE);
             }
             
             pstmt.executeUpdate();
@@ -289,7 +298,7 @@ public class TransactionDAO {
     }
 
     public void updateTransaction(Transaction t, int walletId) {
-        String updateSql = "UPDATE transactions SET amount = ?, date = ?, note = ?, category_id = ?, transaction_type = ?, source = ?, payment_method = ?, is_recurring = ?, recurring_period = ?, passed_periods = ? WHERE id = ?";
+        String updateSql = "UPDATE transactions SET amount = ?, date = ?, note = ?, category_id = ?, transaction_type = ?, source = ?, payment_method = ?, is_recurring = ?, recurring_period = ?, passed_periods = ?, recurring_end_date = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
              
@@ -311,6 +320,7 @@ public class TransactionDAO {
                 pstmt.setBoolean(8, false);
                 pstmt.setNull(9, Types.VARCHAR);
                 pstmt.setInt(10, 0);
+                pstmt.setNull(11, Types.DATE);
             } else if (t instanceof core.transaction.RecurringExpense) {
                 core.transaction.RecurringExpense re = (core.transaction.RecurringExpense) t;
                 pstmt.setNull(6, Types.VARCHAR);
@@ -318,20 +328,27 @@ public class TransactionDAO {
                 pstmt.setBoolean(8, true);
                 pstmt.setString(9, re.getPeriod().toString());
                 pstmt.setInt(10, re.getPassedPeriods());
+                if (re.getEndDate() != null) {
+                    pstmt.setDate(11, Date.valueOf(re.getEndDate()));
+                } else {
+                    pstmt.setNull(11, Types.DATE);
+                }
             } else if (t instanceof Expense) {
                 pstmt.setNull(6, Types.VARCHAR);
                 pstmt.setString(7, ((Expense) t).getPaymentMethod());
                 pstmt.setBoolean(8, false);
                 pstmt.setNull(9, Types.VARCHAR);
                 pstmt.setInt(10, 0);
+                pstmt.setNull(11, Types.DATE);
             } else {
                 pstmt.setNull(6, Types.VARCHAR);
                 pstmt.setNull(7, Types.VARCHAR);
                 pstmt.setBoolean(8, false);
                 pstmt.setNull(9, Types.VARCHAR);
                 pstmt.setInt(10, 0);
+                pstmt.setNull(11, Types.DATE);
             }
-            pstmt.setInt(11, t.getId());
+            pstmt.setInt(12, t.getId());
             
             pstmt.executeUpdate();
             
@@ -383,7 +400,9 @@ public class TransactionDAO {
                         if (isRecurring) {
                             String p = rs.getString("recurring_period");
                             java.time.Period period = p != null ? java.time.Period.parse(p) : java.time.Period.ofMonths(1);
-                            core.transaction.RecurringExpense re = new core.transaction.RecurringExpense(id, amount, date, note, cat, wallet, method, period);
+                            java.sql.Date endDateDb = rs.getDate("recurring_end_date");
+                            java.time.LocalDate endDate = (endDateDb != null) ? endDateDb.toLocalDate() : null;
+                            core.transaction.RecurringExpense re = new core.transaction.RecurringExpense(id, amount, date, note, cat, wallet, method, period, endDate);
                             int passedPeriods = rs.getInt("passed_periods");
                             re.setPassedPeriods(passedPeriods);
                             t = re;
@@ -412,7 +431,7 @@ public class TransactionDAO {
             if (t instanceof core.transaction.RecurringExpense) {
                 core.transaction.RecurringExpense re = (core.transaction.RecurringExpense) t;
                 int oldPassed = re.getPassedPeriods();
-                re.nextDueDate(); // updates passedPeriods internally
+                re.nextDueDate(); // updates passedPeriods internally (khong vuot qua endDate neu co)
                 int newPassed = re.getPassedPeriods();
                 
                 if (newPassed > oldPassed) {
@@ -434,6 +453,3 @@ public class TransactionDAO {
         }
     }
 }
-
-
-
