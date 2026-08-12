@@ -1,9 +1,11 @@
 package expensemanager.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import core.storage.TransactionDAO;
 import core.storage.WalletDAO;
+import core.transaction.Expense;
 import core.transaction.Income;
 import core.transaction.RecurringExpense;
 import core.transaction.Transaction;
@@ -28,6 +30,36 @@ public class TransactionService {
         wallet.addTransaction(t); // Hàm này bên trong Wallet có thể đã xử lý cộng/trừ số dư
         
         transactionDAO.saveTransaction(t, wallet.getId());
+        walletDAO.updateBalance(wallet.getId(), wallet.getBalance());
+    }
+
+    /**
+     * Them mot RecurringExpense moi VOI ngay khoi tao trong qua khu, kem backfill
+     * (sinh them) cac giao dich Expense tuong ung so chu ky da qua (re.getPassedPeriods()).
+     *
+     * <p>Luu y: khoan tien cho ban than RecurringExpense (1 lan dau) da duoc tru vao
+     * wallet ngay trong constructor cua Expense (lop cha). Ham nay chi can tru them
+     * cho tung ky da qua (moi ky mot Expense rieng, danh dau "(Auto-generated)" giong
+     * co che processRecurringExpenses() ben TransactionDAO khi load lai tu DB).
+     *
+     * <p>re.getPassedPeriods() phai duoc tinh san (goi re.nextDueDate() truoc do) boi
+     * noi goi ham nay, vi day la noi hien Alert xac nhan voi nguoi dung truoc khi goi.
+     */
+    public void addRecurringExpenseWithBackfill(RecurringExpense re, Wallet wallet) {
+        int passed = re.getPassedPeriods();
+
+        wallet.addTransaction(re);
+        transactionDAO.saveTransaction(re, wallet.getId());
+
+        for (int i = 1; i <= passed; i++) {
+            LocalDate generatedDate = re.getDate().plus(re.getPeriod().multipliedBy(i));
+            Expense backfillExpense = new Expense(0, re.getAmount(), generatedDate,
+                    re.getNote() + " (Auto-generated)", re.getCategory(), wallet, re.getPaymentMethod());
+            // Constructor cua Expense da tu tru tien vao wallet
+            wallet.addTransaction(backfillExpense);
+            transactionDAO.saveTransaction(backfillExpense, wallet.getId());
+        }
+
         walletDAO.updateBalance(wallet.getId(), wallet.getBalance());
     }
 

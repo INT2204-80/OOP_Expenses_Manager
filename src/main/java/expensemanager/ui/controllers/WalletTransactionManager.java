@@ -5,7 +5,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import java.util.stream.Collectors;
+
 import core.Category;
+import core.transaction.PendingRecurringOccurrence;
+import core.transaction.RecurringExpense;
 import core.transaction.Transaction;
 import core.wallet.Wallet;
 import expensemanager.service.TransactionService;
@@ -16,6 +20,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
@@ -63,11 +68,34 @@ public class WalletTransactionManager {
         Double maxAmount = parseDoubleOrNull(filterMaxAmountField);
         String selectedCategory = filterCategoryCombo != null ? filterCategoryCombo.getValue() : null;
         String noteKeyword = filterNoteField != null ? filterNoteField.getText() : null;
+        boolean futureOnly = periodManager.isFutureOnly();
+
+        List<Transaction> source = new ArrayList<>(wallet.getTransactions());
+
+        if (!futureOnly) {
+            // Bo sung cac lan xuat hien (occurrence) "pending" trong tuong lai cua
+            // giao dich lap lai, roi vao khoang [start, end] dang xem theo ky.
+            // Day la giao dich AO (khong luu DB, khong tru wallet that) - chi de:
+            // (1) hien "Pending" trong danh sach; (2) cong vao total Overview cua ky do.
+            LocalDate today = LocalDate.now();
+            LocalDate start = periodManager.getStart();
+            LocalDate end = periodManager.getEnd();
+            for (Transaction t : wallet.getTransactions()) {
+                if (t instanceof RecurringExpense) {
+                    RecurringExpense re = (RecurringExpense) t;
+                    for (LocalDate occDate : re.getOccurrencesBetween(start, end)) {
+                        if (occDate.isAfter(today)) {
+                            source.add(new PendingRecurringOccurrence(re, occDate));
+                        }
+                    }
+                }
+            }
+        }
 
         TransactionFilter filter = TransactionFilter.create()
-                .byFutureMode(LocalDate.now(), periodManager.isFutureOnly());
+                .byFutureMode(LocalDate.now(), futureOnly);
 
-        if (!periodManager.isFutureOnly()) {
+        if (!futureOnly) {
             filter.byPeriod(periodManager.getStart(), periodManager.getEnd());
         }
 
@@ -76,12 +104,13 @@ public class WalletTransactionManager {
                 .byNoteContains(noteKeyword)
                 .byMinAmount(minAmount)
                 .byMaxAmount(maxAmount)
-                .apply(wallet.getTransactions());
+                .apply(source);
     }
 
     public void renderTransactions(VBox transactionsListContainer, VBox emptyTransactionsState,
                                    ScrollPane transactionsScrollPane, List<Transaction> filteredTransactions,
-                                   List<Category> allCategories, Wallet currentWallet, Runnable refreshCallback) {
+                                   List<Category> allCategories, Wallet currentWallet, boolean futureOnly,
+                                   Runnable refreshCallback) {
         if (transactionsListContainer == null || emptyTransactionsState == null || transactionsScrollPane == null) {
             return;
         }
@@ -96,24 +125,108 @@ public class WalletTransactionManager {
             return;
         }
 
-        for (Transaction t : filteredTransactions) {
-            transactionsListContainer.getChildren().add(
+        if (futureOnly) {
+            // Tach thanh 2 khoi rieng: "Dinh ky sap toi" (RecurringExpense) va
+            // "Giao dich sap toi" (giao dich thuong, mot lan, ngay trong tuong lai).
+            List<Transaction> recurring = filteredTransactions.stream()
+                    .filter(t -> t instanceof RecurringExpense)
+                    .collect(Collectors.toList());
+            List<Transaction> nonRecurring = filteredTransactions.stream()
+                    .filter(t -> !(t instanceof RecurringExpense))
+                    .collect(Collectors.toList());
+
+            if (!recurring.isEmpty()) {
+                transactionsListContainer.getChildren().add(createSectionHeader("Định kỳ sắp tới"));
+                addRows(transactionsListContainer, recurring, allCategories, currentWallet, refreshCallback, true);
+            }
+            if (!nonRecurring.isEmpty()) {
+                transactionsListContainer.getChildren().add(createSectionHeader("Giao dịch sắp tới"));
+                addRows(transactionsListContainer, nonRecurring, allCategories, currentWallet, refreshCallback, false);
+            }
+        } else {
+            addRows(transactionsListContainer, filteredTransactions, allCategories, currentWallet, refreshCallback, false);
+        }
+    }
+
+    private void addRows(VBox container, List<Transaction> transactions, List<Category> allCategories,
+                         Wallet currentWallet, Runnable refreshCallback, boolean futureRecurringDisplay) {
+        for (Transaction t : transactions) {
+            container.getChildren().add(
                     TransactionRowFactory.createTransactionRow(
                             t,
                             oldT -> handleEditTransaction(oldT, allCategories, currentWallet, refreshCallback),
-                            deletedT -> handleDeleteTransaction(deletedT, currentWallet, refreshCallback)
+                            deletedT -> handleDeleteTransaction(deletedT, currentWallet, refreshCallback),
+                            futureRecurringDisplay
                     )
             );
         }
+    }
+
+    private Label createSectionHeader(String text) {
+        Label header = new Label(text);
+        header.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #64748b; -fx-padding: 10 0 4 4;");
+        return header;
     }
 
     public void showAddTransactionDialog(List<Category> allCategories, Wallet currentWallet, Runnable refreshCallback) {
         Dialog<Transaction> dialog = TransactionDialogFactory.createDialog(null, allCategories, currentWallet);
         Optional<Transaction> result = dialog.showAndWait();
         result.ifPresent(transaction -> {
-            transactionService.addTransactionAndUpdateWallet(transaction, currentWallet);
-            refreshCallback.run();
+            if (transaction instanceof RecurringExpense) {
+                handleAddRecurringWithBackfill((RecurringExpense) transaction, currentWallet, refreshCallback);
+            } else {
+                transactionService.addTransactionAndUpdateWallet(transaction, currentWallet);
+                refreshCallback.run();
+            }
         });
+    }
+
+    /**
+     * Xu ly them RecurringExpense moi. Neu ngay khoi tao o qua khu va da qua X chu ky,
+     * hoi xac nhan nguoi dung truoc khi backfill X giao dich tuong ung.
+     *
+     * <p>Luu y: constructor cua RecurringExpense (ke thua Expense) da tu tru 1 lan
+     * amount vao currentWallet ngay khi dialog tra ve object nay. Neu nguoi dung Huy
+     * xac nhan backfill, phai hoan (deposit) lai khoan do vi yeu cau la "Huy toan bo,
+     * khong them transaction nao".
+     */
+    private void handleAddRecurringWithBackfill(RecurringExpense re, Wallet currentWallet, Runnable refreshCallback) {
+        re.nextDueDate(); // tinh toan lai passedPeriods dua tren ngay hien tai
+        int passed = re.getPassedPeriods();
+
+        if (passed <= 0) {
+            transactionService.addTransactionAndUpdateWallet(re, currentWallet);
+            refreshCallback.run();
+            return;
+        }
+
+        double neededForBackfill = re.getAmount() * passed;
+        if (neededForBackfill > currentWallet.getBalance()) {
+            currentWallet.deposit(re.getAmount()); // hoan tac khoan da tru trong constructor
+            showError("Số dư ví không đủ để tạo " + passed + " giao dịch cho các chu kỳ đã qua!");
+            return;
+        }
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Xác nhận giao dịch định kỳ trong quá khứ");
+        alert.setHeaderText("Ngày khởi tạo đã qua " + passed + " chu kỳ");
+        alert.setContentText("Hệ thống sẽ thêm " + passed
+                + " giao dịch tương ứng với các chu kỳ đã qua và trừ thẳng vào ví. Bạn có muốn tiếp tục?");
+        alert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+
+        Optional<ButtonType> confirmResult = alert.showAndWait();
+        if (confirmResult.isPresent() && confirmResult.get() == ButtonType.YES) {
+            transactionService.addRecurringExpenseWithBackfill(re, currentWallet);
+            refreshCallback.run();
+        } else {
+            currentWallet.deposit(re.getAmount()); // hoan tac khoan da tru trong constructor, huy toan bo
+        }
+    }
+
+    private void showError(String msg) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, msg);
+        alert.setHeaderText(null);
+        alert.showAndWait();
     }
 
     public void handleResetFilters(ComboBox<String> filterCategoryCombo, TextField filterNoteField,

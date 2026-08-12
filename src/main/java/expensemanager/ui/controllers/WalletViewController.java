@@ -181,7 +181,7 @@ public class WalletViewController {
 
         transactionManager.renderTransactions(
                 transactionsListContainer, emptyTransactionsState, transactionsScrollPane,
-                filtered, categoryManager.getAllCategories(), currentWallet, () -> {
+                filtered, categoryManager.getAllCategories(), currentWallet, periodManager.isFutureOnly(), () -> {
                     refreshTransactionsView();
                     refreshBalanceLabels();
                 });

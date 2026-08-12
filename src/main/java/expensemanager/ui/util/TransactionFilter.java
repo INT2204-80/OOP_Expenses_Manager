@@ -25,7 +25,18 @@ public final class TransactionFilter {
     public TransactionFilter byFutureMode(LocalDate referenceDate, boolean futureOnly) {
         if (futureOnly) {
             LocalDate today = referenceDate != null ? referenceDate : LocalDate.now();
-            predicate = predicate.and(t -> t != null && t.getDate() != null && t.getDate().isAfter(today));
+            predicate = predicate.and(t -> {
+                if (t == null) {
+                    return false;
+                }
+                // RecurringExpense: ngay khoi tao (getDate()) luon o qua khu,
+                // nen phai xet theo ky han tiep theo (nextDueDate()) thay vi ngay khoi tao,
+                // neu khong giao dich lap lai se khong bao gio duoc coi la "future".
+                LocalDate effectiveDate = (t instanceof core.transaction.RecurringExpense)
+                        ? ((core.transaction.RecurringExpense) t).nextDueDate()
+                        : t.getDate();
+                return effectiveDate != null && effectiveDate.isAfter(today);
+            });
         }
         return this;
     }

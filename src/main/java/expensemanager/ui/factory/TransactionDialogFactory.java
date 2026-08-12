@@ -71,6 +71,15 @@ public class TransactionDialogFactory {
             categoryCombo.getSelectionModel().select(oldT.getCategory().getName());
             if (oldT instanceof RecurringExpense) {
                 recurringCheck.setSelected(true);
+                // BUG FIX: truoc day periodCombo khong duoc dong bo lai theo chu ky
+                // that da luu cua oldT, nen luc Sua luon hien mac dinh "Hang thang"
+                // du chu ky that la gi. Phai anh xa nguoc java.time.Period -> core.Period
+                // roi chon dung item trong periodCombo.
+                java.time.Period savedPeriod = ((RecurringExpense) oldT).getPeriod();
+                String displayName = mapToDisplayName(savedPeriod);
+                if (displayName != null) {
+                    periodCombo.getSelectionModel().select(displayName);
+                }
             }
         } else if (!categoryCombo.getItems().isEmpty()) {
             categoryCombo.getSelectionModel().selectFirst();
@@ -139,7 +148,8 @@ public class TransactionDialogFactory {
                 if (cat.getType() == TransactionType.INCOME) {
                     return new Income(id, amount, date, note, cat, wallet, catName);
                 } else if (recurringCheck.isSelected()) {
-                    java.time.Period p = java.time.Period.ofMonths(1);
+                    core.Period corePeriod = mapToCorePeriod(periodCombo.getValue());
+                    java.time.Period p = corePeriod.toJavaPeriod();
                     return new RecurringExpense(id, amount, date, note, cat, wallet, catName, p);
                 } else {
                     return new Expense(id, amount, date, note, cat, wallet, catName);
@@ -149,6 +159,40 @@ public class TransactionDialogFactory {
         });
 
         return dialog;
+    }
+
+    /**
+     * Anh xa ngay ngoc lai: java.time.Period (da luu trong RecurringExpense/DB)
+     * sang ten hien thi trong periodCombo, de dialog Sua hien dung chu ky that
+     * thay vi mac dinh "Hang thang".
+     *
+     * @return ten hien thi khop, hoac null neu khong khop voi Period nao trong core.Period
+     */
+    private static String mapToDisplayName(java.time.Period savedPeriod) {
+        if (savedPeriod == null) {
+            return null;
+        }
+        for (core.Period p : core.Period.values()) {
+            if (p.toJavaPeriod().equals(savedPeriod)) {
+                return p.getDisplayName();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Anh xa ten hien thi trong periodCombo ("Hang ngay", "Hang tuan", ...)
+     * sang core.Period tuong ung. Mac dinh MONTHLY neu khong khop (an toan).
+     */
+    private static core.Period mapToCorePeriod(String displayName) {
+        if (displayName != null) {
+            for (core.Period p : core.Period.values()) {
+                if (p.getDisplayName().equals(displayName)) {
+                    return p;
+                }
+            }
+        }
+        return core.Period.MONTHLY;
     }
 
     private static void showError(String msg) {
