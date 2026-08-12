@@ -1,5 +1,6 @@
 package expensemanager.ui.util;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +35,7 @@ public class WalletChartHelper {
 
         // Định cấu hình Trục X (Nhãn ngày/tuần/tháng)
         if (balanceChart.getXAxis() instanceof CategoryAxis) {
-            configureXAxis((CategoryAxis) balanceChart.getXAxis(), balBuckets != null ? balBuckets.size() : 0);
+            configureXAxis((CategoryAxis) balanceChart.getXAxis(), extractLabels(balBuckets));
         }
 
         // Định cấu hình Trục Y
@@ -75,14 +76,14 @@ public class WalletChartHelper {
 
         // Định cấu hình Trục X
         if (changesChart.getXAxis() instanceof CategoryAxis) {
-            configureXAxis((CategoryAxis) changesChart.getXAxis(), bucketCount);
+            configureXAxis((CategoryAxis) changesChart.getXAxis(), extractLabels(chgBuckets));
         }
 
         // FIX LỖI CỘT PHÌNH TO: Tự động chỉnh khoảng cách categoryGap dựa theo số lượng phần tử
         if (bucketCount <= 5) {
-            changesChart.setCategoryGap(90); // Rất ít cột (xem theo Tuần) -> Tạo khoảng trống lớn để cột thon gọn
+            changesChart.setCategoryGap(80); // Rất ít cột (xem theo Tuần) -> Tạo khoảng trống lớn để cột thon gọn
         } else if (bucketCount <= 12) {
-            changesChart.setCategoryGap(45); // Xem theo Tháng (12 cột)
+            changesChart.setCategoryGap(20); // Xem theo Tháng (12 cột)
         } else if (bucketCount <= 20) {
             changesChart.setCategoryGap(20);
         } else {
@@ -208,12 +209,37 @@ public class WalletChartHelper {
         }
     }
 
+    /** Lay danh sach nhan (label) theo dung thu tu tu danh sach bucket. */
+    private static List<String> extractLabels(List<ChartBucket> buckets) {
+        List<String> labels = new ArrayList<>();
+        if (buckets != null) {
+            for (ChartBucket b : buckets) {
+                labels.add(b.label);
+            }
+        }
+        return labels;
+    }
+
     // --- Helper Cấu hình Trục X (CategoryAxis) ---
-    private static void configureXAxis(CategoryAxis xAxis, int itemCount) {
+    /**
+     * BUG FIX: truoc day ham nay chi goi xAxis.getCategories().clear() roi de
+     * autoRanging=true tu suy category tu du lieu series duoc them vao sau.
+     * Khi so luong category giam manh (VD: tu 31 ngay xuong con 12 thang),
+     * CategoryAxis cua JavaFX khong lam moi dung layout/kich thuoc cac cot,
+     * khien cot bi tinh sai vi tri/kich thuoc va khong hien thi duoc (du truc Y
+     * van scale dung theo du lieu that). Fix: tat autoRanging va set cung danh
+     * sach category dung thu tu truoc khi du lieu series duoc them vao.
+     */
+    private static void configureXAxis(CategoryAxis xAxis, List<String> labels) {
+        xAxis.setAutoRanging(false);
         xAxis.getCategories().clear();
+        if (labels != null && !labels.isEmpty()) {
+            xAxis.getCategories().setAll(labels);
+        }
         xAxis.setTickLabelsVisible(true);
         xAxis.setTickMarkVisible(true);
-        
+
+        int itemCount = labels != null ? labels.size() : 0;
         // Nếu chọn xem theo ngày (nhiều hơn 15 cột) -> Xoay nghiêng 45 độ cho dễ đọc
         if (itemCount > 15) {
             xAxis.setTickLabelRotation(-45);
