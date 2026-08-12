@@ -45,7 +45,7 @@ public class RecurringExpense extends Expense {
         currentDueDate = getDate().plus(
                 period.multipliedBy(passedPeriods + 1));
 
-        while (today.isAfter(currentDueDate) && (endDate == null || !currentDueDate.isAfter(endDate))) {
+        while (!currentDueDate.isAfter(today) && (endDate == null || !currentDueDate.isAfter(endDate))) {
             passedPeriods++;
             currentDueDate = getDate().plus(
                     period.multipliedBy(passedPeriods + 1));
