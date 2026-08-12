@@ -4,8 +4,12 @@ import java.io.IOException;
 import java.util.List;
 
 import core.Budget;
+import core.Category;
 import core.storage.BudgetDAO;
 import core.storage.TransactionDAO;
+import core.storage.WalletDAO;
+import core.transaction.Transaction;
+import core.wallet.Wallet;
 import expensemanager.service.BudgetService;
 import expensemanager.ui.factory.BudgetCardFactory;
 import expensemanager.ui.factory.BudgetDialogFactory;
@@ -15,6 +19,8 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 
@@ -24,42 +30,69 @@ public class BudgetsViewController {
     private FlowPane budgetsContainer;
 
     private final BudgetService budgetService;
+    private final BudgetDAO budgetDAO;
+    private final TransactionDAO transactionDAO;
+    private final WalletDAO walletDAO;
 
     // Injection dependencies (chuẩn DIP)
     public BudgetsViewController() {
-        this.budgetService = new BudgetService(new BudgetDAO(), new TransactionDAO());
+        this.budgetDAO = new BudgetDAO();
+        this.transactionDAO = new TransactionDAO();
+        this.walletDAO = new WalletDAO();
+        this.budgetService = new BudgetService(this.budgetDAO, this.transactionDAO);
     }
 
     @FXML
     public void initialize() {
-        budgetService.prepareAndRecalculate();
         loadBudgets();
     }
 
+    /**
+     * Gộp budget của TẤT CẢ các ví để hiển thị ở Dashboard, nhưng tính "spent"
+     * riêng theo từng ví (dùng đúng transactions của ví đó), không dùng SQL
+     * không lọc wallet_id và không ghi đè xuống DB.
+     */
     private void loadBudgets() {
         budgetsContainer.getChildren().clear();
 
-        List<Budget> budgets = budgetService.fetchAllBudgets();
+        List<Wallet> wallets = walletDAO.getAllWallets();
+        boolean hasAnyBudget = false;
 
-        // 1. Tạo các thẻ Ngân sách
-        for (Budget budget : budgets) {
-            VBox card = BudgetCardFactory.createBudgetCard(budget, () -> handleDeleteBudget(budget));
-            budgetsContainer.getChildren().add(card);
+        for (Wallet wallet : wallets) {
+            List<Budget> walletBudgets = budgetDAO.getBudgetsByWallet(wallet.getId());
+            if (walletBudgets.isEmpty()) {
+                continue;
+            }
+
+            List<Transaction> walletTx = transactionDAO.getTransactionsByWallet(wallet);
+
+            for (Budget budget : walletBudgets) {
+                // Chỉ tính trong bộ nhớ để hiển thị, KHÔNG updateBudget() xuống DB
+                budget.updateSpentFromTransactions(walletTx);
+
+                VBox card = BudgetCardFactory.createBudgetCard(
+                        budget,
+                        wallet.getName(),
+                        () -> handleEditBudget(budget),
+                        () -> handleDeleteBudget(budget));
+                budgetsContainer.getChildren().add(card);
+                hasAnyBudget = true;
+            }
         }
 
-        // 2. Tạo thẻ Placeholder "+"
-        VBox placeholder = BudgetCardFactory.createEmptyState(this::showAddBudgetDialog);
-        budgetsContainer.getChildren().add(placeholder);
+        if (!hasAnyBudget) {
+            Label emptyLabel = new Label("Chưa có ngân sách nào. Hãy tạo ngân sách từ bên trong từng ví.");
+            budgetsContainer.getChildren().add(emptyLabel);
+        }
     }
 
-    @FXML
-    private void showAddBudgetDialog() {
-        BudgetDialogFactory.createAddBudgetDialog(budgetService.fetchAllCategories())
-                .showAndWait()
-                .ifPresent(budget -> {
-                    budgetService.saveNewBudget(budget);
-                    loadBudgets();
-                });
+    private void handleEditBudget(Budget budget) {
+        List<Category> allCategories = budgetService.fetchAllCategories();
+        Dialog<Budget> dialog = BudgetDialogFactory.createEditBudgetDialog(budget, allCategories);
+        dialog.showAndWait().ifPresent(updatedBudget -> {
+            budgetService.updateBudget(updatedBudget);
+            loadBudgets();
+        });
     }
 
     private void handleDeleteBudget(Budget budget) {

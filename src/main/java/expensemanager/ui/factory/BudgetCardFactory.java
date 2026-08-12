@@ -15,18 +15,42 @@ import javafx.scene.layout.VBox;
 
 /**
  * Dung 1 card ngan sach (Budget) va trang thai rong cho tab Budgets.
- *
- * <p>NOTE cho nguoi review: cay thu muc project cua ban da co san 1 file
- * ten {@code BudgetCardFactory.java} trong {@code ui/factory} (thay o
- * anh chup man hinh). Toi chua co noi dung file do nen tao class nay
- * doc lap - vui long doi chieu/hop nhat 2 file truoc khi dung, tranh
- * trung ten class gay loi bien dich.
  */
 public final class BudgetCardFactory {
 
     private BudgetCardFactory() {}
 
+    /**
+     * Giu lai overload cu (khong co nut Sua) de tuong thich nguoc voi cac noi
+     * goi cu chua duoc cap nhat. Se khong hien nut Sua.
+     */
     public static VBox createBudgetCard(Budget budget, Runnable onDeleteClicked) {
+        return createBudgetCard(budget, null, null, onDeleteClicked);
+    }
+
+    /**
+     * Giu lai overload cu (khong co nut Sua) co walletName, de tuong thich nguoc.
+     */
+    public static VBox createBudgetCard(Budget budget, String walletName, Runnable onDeleteClicked) {
+        return createBudgetCard(budget, walletName, null, onDeleteClicked);
+    }
+
+    /**
+     * Overload moi co nut Sua, khong kem walletName.
+     */
+    public static VBox createBudgetCard(Budget budget, Runnable onEditClicked, Runnable onDeleteClicked) {
+        return createBudgetCard(budget, null, onEditClicked, onDeleteClicked);
+    }
+
+    /**
+     * @param walletName ten vi so huu budget nay. Truyen null hoac chuoi rong
+     *                    de an dong nay (dung cho WalletBudgetManager, noi da
+     *                    o san trong ngu canh 1 vi roi). Dashboard (gop nhieu
+     *                    vi) nen truyen ten vi vao day de phan biet cac budget.
+     * @param onEditClicked callback khi bam nut "Sua". Truyen null de an nut Sua.
+     * @param onDeleteClicked callback khi bam nut "Xoa ngan sach".
+     */
+    public static VBox createBudgetCard(Budget budget, String walletName, Runnable onEditClicked, Runnable onDeleteClicked) {
         VBox card = new VBox();
         card.setSpacing(20);
         card.setStyle("-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 20; "
@@ -35,17 +59,33 @@ public final class BudgetCardFactory {
         // Header
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
-        Label title = new Label("Ng\u00e2n s\u00e1ch > " + budget.getName() + "\n"
-                + (budget.getCategory() != null ? budget.getCategory().getName() : "T\u1ea5t c\u1ea3"));
-        title.setStyle("-fx-font-size: 16; -fx-font-weight: bold;");
+        header.setSpacing(10);
+
+        String titleText = "Ng\u00e2n s\u00e1ch > " + budget.getName() + "\n"
+                + (budget.getCategory() != null ? budget.getCategory().getName() : "T\u1ea5t c\u1ea3");
+        if (walletName != null && !walletName.isBlank()) {
+            titleText = "V\u00ed: " + walletName + "\n" + titleText;
+        }
+
+        Label title = new Label(titleText);
+        title.setStyle("-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #1a202c;");
 
         Region spacer1 = new Region();
         HBox.setHgrow(spacer1, Priority.ALWAYS);
 
-        Button editBtn = new Button("X\u00f3a ng\u00e2n s\u00e1ch");
-        editBtn.setStyle("-fx-background-color: #ffebee; -fx-text-fill: #d32f2f; -fx-font-weight: bold; -fx-background-radius: 5;");
-        editBtn.setOnAction(e -> onDeleteClicked.run());
-        header.getChildren().addAll(title, spacer1, editBtn);
+        header.getChildren().addAll(title, spacer1);
+
+        if (onEditClicked != null) {
+            Button editActionBtn = new Button("S\u1eeda");
+            editActionBtn.setStyle("-fx-background-color: #e3f2fd; -fx-text-fill: #1565c0; -fx-font-weight: bold; -fx-background-radius: 5;");
+            editActionBtn.setOnAction(e -> onEditClicked.run());
+            header.getChildren().add(editActionBtn);
+        }
+
+        Button deleteBtn = new Button("X\u00f3a ng\u00e2n s\u00e1ch");
+        deleteBtn.setStyle("-fx-background-color: #ffebee; -fx-text-fill: #d32f2f; -fx-font-weight: bold; -fx-background-radius: 5;");
+        deleteBtn.setOnAction(e -> onDeleteClicked.run());
+        header.getChildren().add(deleteBtn);
 
         // Stats
         HBox statsBox = new HBox();
@@ -89,6 +129,25 @@ public final class BudgetCardFactory {
 
         card.getChildren().addAll(header, statsBox, progressBox);
         return card;
+    }
+
+    /**
+     * Trang thai rong khong kem nut "Create a New Budget" - dung cho man hinh
+     * da co san 1 nut tao budget co dinh o header, tranh trung 2 nut.
+     */
+    public static VBox createEmptyState() {
+        VBox emptyBox = new VBox();
+        emptyBox.setAlignment(Pos.CENTER);
+        emptyBox.setSpacing(15);
+        emptyBox.getStyleClass().add("budget-empty-box");
+
+        Label l1 = new Label("Take control of your expenses and");
+        l1.getStyleClass().add("budget-text");
+        Label l2 = new Label("save more money with budgets!");
+        l2.getStyleClass().add("budget-text");
+
+        emptyBox.getChildren().addAll(l1, l2);
+        return emptyBox;
     }
 
     public static VBox createEmptyState(Runnable onCreateClicked) {

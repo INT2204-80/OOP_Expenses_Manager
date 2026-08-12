@@ -31,6 +31,14 @@ public class WalletBudgetManager {
         });
     }
 
+    private void handleShowEditBudgetDialog(Budget budget, List<Category> allCategories, Wallet currentWallet, VBox budgetsContainer) {
+        Dialog<Budget> dialog = BudgetDialogFactory.createEditBudgetDialog(budget, allCategories);
+        dialog.showAndWait().ifPresent(updatedBudget -> {
+            budgetService.updateBudget(updatedBudget);
+            renderBudgets(budgetsContainer, currentWallet, allCategories);
+        });
+    }
+
     public void renderBudgets(VBox budgetsContainer, Wallet currentWallet, List<Category> allCategories) {
         if (budgetsContainer == null || currentWallet == null) {
             return;
@@ -40,18 +48,23 @@ public class WalletBudgetManager {
         List<Budget> budgets = budgetDAO.getBudgetsByWallet(currentWallet.getId());
 
         if (budgets.isEmpty()) {
-            budgetsContainer.getChildren().add(BudgetCardFactory.createEmptyState(
-                    () -> handleShowAddBudgetDialog(allCategories, currentWallet, budgetsContainer)));
+            // Man hinh nay da co san 1 nut "Create a New Budget" co dinh o header
+            // (xem #handleShowAddBudgetDialog trong WalletView.fxml), nen khong
+            // them nut nua o day de tranh trung.
+            budgetsContainer.getChildren().add(BudgetCardFactory.createEmptyState());
             return;
         }
 
         List<Transaction> walletTx = currentWallet.getTransactions();
         for (Budget budget : budgets) {
             budget.updateSpentFromTransactions(walletTx);
-            VBox card = BudgetCardFactory.createBudgetCard(budget, () -> {
-                budgetService.removeBudget(budget.getId());
-                renderBudgets(budgetsContainer, currentWallet, allCategories);
-            });
+            VBox card = BudgetCardFactory.createBudgetCard(
+                    budget,
+                    () -> handleShowEditBudgetDialog(budget, allCategories, currentWallet, budgetsContainer),
+                    () -> {
+                        budgetService.removeBudget(budget.getId());
+                        renderBudgets(budgetsContainer, currentWallet, allCategories);
+                    });
             budgetsContainer.getChildren().add(card);
         }
     }

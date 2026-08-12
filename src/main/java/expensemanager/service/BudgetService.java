@@ -16,25 +16,15 @@ public class BudgetService {
         this.transactionDAO = transactionDAO;
     }
 
-    public void prepareAndRecalculate() {
-        budgetDAO.recalculateAllBudgetsSpentAmount();
-    }
-
-    public List<Budget> fetchAllBudgets() {
-        return budgetDAO.getAllBudgets();
-    }
-
     public List<Category> fetchAllCategories() {
         return transactionDAO.getAllCategories();
     }
 
-    public void saveNewBudget(Budget budget) {
-        budgetDAO.addBudget(budget, -1);
-        budgetDAO.recalculateBudgetSpentAmount(budget);
-        budgetDAO.updateBudget(budget);
-    }
-
     public void removeBudget(int budgetId) {
         budgetDAO.deleteBudget(budgetId);
+    }
+
+    public void updateBudget(Budget budget) {
+        budgetDAO.updateBudget(budget);
     }
 }

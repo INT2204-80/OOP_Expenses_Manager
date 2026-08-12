@@ -9,6 +9,8 @@ import core.wallet.EWallet;
 import core.wallet.Wallet;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
@@ -25,6 +27,9 @@ import javafx.util.Pair;
 
 public class DashboardDialogHelper {
 
+    /** Han muc toi da hop ly cho so du (10 ty VND), dung chung voi cac dialog khac. */
+    private static final double MAX_BALANCE = 10_000_000_000.0;
+
     public static Optional<Wallet> showAddWalletDialog() {
         Dialog<Wallet> dialog = new Dialog<>();
         dialog.setTitle("Add New Wallet");
@@ -32,6 +37,8 @@ public class DashboardDialogHelper {
 
         ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+
+        Button saveButton = (Button) dialog.getDialogPane().lookupButton(saveButtonType);
 
         VBox content = new VBox(15);
         content.setPadding(new Insets(20, 20, 20, 20));
@@ -102,17 +109,81 @@ public class DashboardDialogHelper {
         content.getChildren().addAll(new Label("Wallet Type:"), typeCombo, grid);
         dialog.getDialogPane().setContent(content);
 
+        // --- Input Validation Event Filter ---
+        saveButton.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            String walletName = name.getText() == null ? "" : name.getText().trim();
+            String balanceStr = balance.getText() == null ? "" : balance.getText().replaceAll(",", "").trim();
+            String type = typeCombo.getValue();
+
+            if (walletName.isEmpty()) {
+                showErrorAlert("Tên ví không được để trống!");
+                event.consume();
+                return;
+            }
+
+            if (balanceStr.isEmpty()) {
+                showErrorAlert("Vui lòng nhập số dư ban đầu!");
+                event.consume();
+                return;
+            }
+
+            double bal;
+            try {
+                bal = Double.parseDouble(balanceStr);
+            } catch (NumberFormatException e) {
+                showErrorAlert("Số dư ban đầu không hợp lệ! Chỉ được nhập số.");
+                event.consume();
+                return;
+            }
+
+            if (!Double.isFinite(bal)) {
+                showErrorAlert("Số dư ban đầu không hợp lệ!");
+                event.consume();
+                return;
+            }
+
+            if (bal < 0) {
+                showErrorAlert("Số dư ban đầu không được là số âm!");
+                event.consume();
+                return;
+            }
+
+            if (bal > MAX_BALANCE) {
+                showErrorAlert(String.format("Số dư ban đầu không được vượt quá %,.0f VND!", MAX_BALANCE));
+                event.consume();
+                return;
+            }
+
+            if ("Bank Account".equals(type)) {
+                if (bankName.getText() == null || bankName.getText().trim().isEmpty()) {
+                    showErrorAlert("Vui lòng nhập tên ngân hàng (Bank Name)!");
+                    event.consume();
+                    return;
+                }
+                if (accNumber.getText() == null || accNumber.getText().trim().isEmpty()) {
+                    showErrorAlert("Vui lòng nhập số tài khoản (Account Number)!");
+                    event.consume();
+                    return;
+                }
+            }
+
+            if ("E-Wallet".equals(type)) {
+                if (provider.getText() == null || provider.getText().trim().isEmpty()) {
+                    showErrorAlert("Vui lòng nhập nhà cung cấp (Provider)!");
+                    event.consume();
+                    return;
+                }
+            }
+        });
+
         dialog.setResultConverter(btn -> {
             if (btn == saveButtonType) {
-                try {
-                    double bal = Double.parseDouble(balance.getText());
-                    String type = typeCombo.getValue();
-                    if ("Bank Account".equals(type)) return new BankAccount(name.getText(), bal, bankName.getText(), accNumber.getText());
-                    if ("E-Wallet".equals(type)) return new EWallet(name.getText(), bal, provider.getText());
-                    return new CashWallet(name.getText(), bal);
-                } catch (NumberFormatException e) {
-                    return null;
-                }
+                double bal = Double.parseDouble(balance.getText().replaceAll(",", "").trim());
+                String type = typeCombo.getValue();
+                String walletName = name.getText().trim();
+                if ("Bank Account".equals(type)) return new BankAccount(walletName, bal, bankName.getText().trim(), accNumber.getText().trim());
+                if ("E-Wallet".equals(type)) return new EWallet(walletName, bal, provider.getText().trim());
+                return new CashWallet(walletName, bal);
             }
             return null;
         });
@@ -143,5 +214,11 @@ public class DashboardDialogHelper {
         dialog.setResultConverter(btn -> btn == okButtonType ? new Pair<>(startDatePicker.getValue(), endDatePicker.getValue()) : null);
 
         return dialog.showAndWait();
+    }
+
+    private static void showErrorAlert(String msg) {
+        Alert alert = new Alert(Alert.AlertType.ERROR, msg);
+        alert.setHeaderText(null);
+        alert.showAndWait();
     }
 }

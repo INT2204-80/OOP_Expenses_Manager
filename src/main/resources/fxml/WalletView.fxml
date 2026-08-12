@@ -287,19 +287,20 @@
                     </padding>
                     
                     <HBox alignment="CENTER_LEFT" spacing="20">
-                        <Label style="-fx-font-size: 24; -fx-font-weight: bold;" text="Ngân sách (Budgets)" />
+                        <Label style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #1a202c;" text="Ngân sách (Budgets)" />
                         <Region HBox.hgrow="ALWAYS" />
                         <Button onAction="#handleShowAddBudgetDialog" styleClass="solid-button" text="Create a New Budget" />
                     </HBox>
                     
                     <javafx.scene.control.ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: transparent;" VBox.vgrow="ALWAYS">
                         <VBox fx:id="budgetsContainer" spacing="20" style="-fx-background-color: transparent;">
+                            <!-- Noi dung o day chi la placeholder tinh, se bi thay the ngay khi
+                                 switchToBudgets() goi WalletBudgetManager.renderBudgets().
+                                 Khong dat nut "Create a New Budget" o day nua vi da co san
+                                 1 nut co dinh o header phia tren, tranh trung 2 nut. -->
                             <VBox alignment="CENTER" spacing="15" styleClass="budget-empty-box">
                                 <Label styleClass="budget-text" text="Take control of your expenses and" />
                                 <Label styleClass="budget-text" text="save more money with budgets!" />
-                                <Button onAction="#handleShowAddBudgetDialog" styleClass="solid-button" text="Create a New Budget">
-                                    <VBox.margin><Insets top="10" /></VBox.margin>
-                                </Button>
                             </VBox>
                         </VBox>
                     </javafx.scene.control.ScrollPane>

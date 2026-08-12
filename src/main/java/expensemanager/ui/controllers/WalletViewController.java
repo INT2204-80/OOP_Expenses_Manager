@@ -47,6 +47,9 @@ public class WalletViewController {
     private final WalletCategoryManager categoryManager;
     private final WalletBudgetManager budgetManager;
 
+    /** Han muc toi da hop ly cho so du (10 ty VND), dung chung voi BudgetDialogFactory. */
+    private static final double MAX_BALANCE = 10_000_000_000.0;
+
     // Constructors
     public WalletViewController() {
         this.transactionDAO = new TransactionDAO();
@@ -306,7 +309,7 @@ public class WalletViewController {
         switchTab(tabSettings, menuSettings);
         if (settingWalletName != null && currentWallet != null) {
             settingWalletName.setText(currentWallet.getName());
-            settingInitialBalance.setText(String.valueOf(currentWallet.getBalance()));
+            settingInitialBalance.setText(MoneyFormat.format(currentWallet.getBalance()));
             settingCurrency.setText("VND");
         }
     }
@@ -387,8 +390,9 @@ public class WalletViewController {
     @FXML
     private void handleUpdateWalletSettings() {
         String newName = settingWalletName.getText().trim();
-        String initialBalanceStr = settingInitialBalance.getText().trim();
-        String currency = settingCurrency.getText().trim();
+        // Cho phep nguoi dung go co dau phay ngan cach (vi da hien thi dang
+        // MoneyFormat) hoac go tay so thuan.
+        String initialBalanceStr = settingInitialBalance.getText().replaceAll(",", "").trim();
 
         // Kiểm tra tên ví không được trống
         if (newName.isEmpty()) {
@@ -396,28 +400,50 @@ public class WalletViewController {
             return;
         }
 
+        if (initialBalanceStr.isEmpty()) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi", "Vui lòng nhập số dư ban đầu!");
+            return;
+        }
+
+        double initialBalance;
         try {
-            double initialBalance = Double.parseDouble(initialBalanceStr);
-
-            if (currentWallet == null) {
-                showAlert(Alert.AlertType.ERROR, "Lỗi", "Không có ví để cập nhật.");
-                return;
-            }
-
-            currentWallet.setName(newName);
-            currentWallet.setBalance(initialBalance);
-            walletDAO.updateWallet(currentWallet);
-
-            if (walletNameTopLabel != null) {
-                walletNameTopLabel.setText(newName);
-            }
-            refreshBalanceLabels();
-
-            showAlert(Alert.AlertType.INFORMATION, "Success", "Wallet settings updated successfully!");
-
+            initialBalance = Double.parseDouble(initialBalanceStr);
         } catch (NumberFormatException e) {
             showAlert(Alert.AlertType.ERROR, "Lỗi định dạng", "Số dư ban đầu phải là một số hợp lệ!");
+            return;
         }
+
+        if (!Double.isFinite(initialBalance)) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi định dạng", "Số dư ban đầu không hợp lệ!");
+            return;
+        }
+
+        if (initialBalance < 0) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi", "Số dư ban đầu không được là số âm!");
+            return;
+        }
+
+        if (initialBalance > MAX_BALANCE) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi",
+                    String.format("Số dư ban đầu không được vượt quá %,.0f VND!", MAX_BALANCE));
+            return;
+        }
+
+        if (currentWallet == null) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi", "Không có ví để cập nhật.");
+            return;
+        }
+
+        currentWallet.setName(newName);
+        currentWallet.setBalance(initialBalance);
+        walletDAO.updateWallet(currentWallet);
+
+        if (walletNameTopLabel != null) {
+            walletNameTopLabel.setText(newName);
+        }
+        refreshBalanceLabels();
+
+        showAlert(Alert.AlertType.INFORMATION, "Success", "Wallet settings updated successfully!");
     }
 
     // Hàm tiện ích hiển thị thông báo Alert

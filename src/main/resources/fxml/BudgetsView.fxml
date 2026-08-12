@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.effect.ColorAdjust?>
@@ -67,13 +66,7 @@
 
                 <!-- BUDGETS GRID -->
                 <FlowPane fx:id="budgetsContainer" hgap="20" vgap="20">
-                    <!-- Dynamic budget cards will be added here -->
-                    
-                    <!-- Create New Budget Card Placeholder -->
-                    <VBox alignment="CENTER" onMouseClicked="#showAddBudgetDialog" spacing="15" styleClass="budget-card, add-budget-card">
-                        <Label alignment="BOTTOM_CENTER" contentDisplay="CENTER" styleClass="add-budget-text" text="Take control of your expenses and&#10;save more money with budgets!" textAlignment="CENTER" wrapText="true" />
-                        <Button onAction="#showAddBudgetDialog" styleClass="btn-primary" text="Create a New Budget" />
-                    </VBox>
+                    <!-- Dynamic budget cards will be added here (aggregated across all wallets) -->
                 </FlowPane>
             </VBox>
         </ScrollPane>
