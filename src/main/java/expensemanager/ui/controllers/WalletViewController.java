@@ -48,7 +48,7 @@ public class WalletViewController {
     private final WalletBudgetManager budgetManager;
 
     /** Han muc toi da hop ly cho so du (10 ty VND), dung chung voi BudgetDialogFactory. */
-    private static final double MAX_BALANCE = 10_000_000_000.0;
+    private static final double MAX_BALANCE = 10_000_000_000_000_000.0;
 
     // Constructors
     public WalletViewController() {
