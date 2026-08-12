@@ -1,14 +1,18 @@
 package core.storage;
 
-import core.WalletType;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.List;
+
 import core.wallet.BankAccount;
 import core.wallet.CashWallet;
 import core.wallet.EWallet;
 import core.wallet.Wallet;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class WalletDAO {
 
@@ -112,6 +116,19 @@ public class WalletDAO {
             
         } catch (SQLException e) {
             System.err.println("Error updating wallet balance: " + e.getMessage());
+        }
+    }
+
+    public void updateWallet(Wallet wallet) {
+        String sql = "UPDATE wallets SET name = ?, balance = ? WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, wallet.getName());
+            pstmt.setDouble(2, wallet.getBalance());
+            pstmt.setInt(3, wallet.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Error updating wallet: " + e.getMessage());
         }
     }
 
