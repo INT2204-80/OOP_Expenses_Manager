@@ -1,0 +1,86 @@
+@startuml Architecture_NTier
+' ====== CLEAN LIGHT THEME ======
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 10
+
+skinparam rectangle {
+    FontColor #212121
+    RoundCorner 10
+}
+
+skinparam database {
+    BackgroundColor #FFF9C4
+    BorderColor #F9A825
+    FontColor #212121
+}
+
+title <size:18><b>OOP Expenses Manager – N-Tier Architecture</b></size>
+
+rectangle "🖥️ **UI Layer** (JavaFX Controllers)" as UILayer #E8EAF6 {
+    rectangle "DashboardController" as DC #F3E5F5
+    rectangle "WalletViewController" as WVC #F3E5F5
+    rectangle "BudgetsViewController" as BVC #F3E5F5
+    rectangle "WalletTransactionManager" as WTM #E8EAF6
+    rectangle "WalletCategoryManager" as WCM #E8EAF6
+    rectangle "WalletBudgetManager" as WBM #E8EAF6
+}
+
+rectangle "⚙️ **Service Layer** (Business Logic)" as SvcLayer #FFF3E0 {
+    rectangle "DashboardService" as DS #FFF3E0
+    rectangle "TransactionService" as TS #FFF3E0
+    rectangle "CategoryService" as CS #FFF3E0
+    rectangle "BudgetService" as BS #FFF3E0
+}
+
+rectangle "📋 **DAO Interfaces** (Contracts)" as IntLayer #E3F2FD {
+    rectangle "ITransactionDAO" as ITDAO #E3F2FD
+    rectangle "ICategoryDAO" as ICDAO #E3F2FD
+    rectangle "IWalletDAO" as IWDAO #E3F2FD
+    rectangle "IBudgetDAO" as IBDAO #E3F2FD
+}
+
+rectangle "🗄️ **DAO Layer** (Implementations)" as DAOLayer #E8F5E9 {
+    rectangle "TransactionDAO" as TDAO #E8F5E9
+    rectangle "CategoryDAO" as CDAO #E8F5E9
+    rectangle "WalletDAO" as WDAO #E8F5E9
+    rectangle "BudgetDAO" as BDAO #E8F5E9
+}
+
+database "💾 MySQL 8.3" as MySQL
+
+' ===== UI -> Service =====
+DC --> DS
+WVC --> TS
+WVC --> CS
+WVC --> BS
+WTM --> TS
+WCM --> CS
+WBM --> BS
+BVC --> BS
+
+' ===== Service -> Interface =====
+TS --> ITDAO
+TS --> IWDAO
+CS --> ICDAO
+BS --> IBDAO
+BS --> ICDAO
+DS --> IWDAO
+DS --> ITDAO
+
+' ===== Interface -> Implementation =====
+ITDAO ..> TDAO : implements
+ICDAO ..> CDAO : implements
+IWDAO ..> WDAO : implements
+IBDAO ..> BDAO : implements
+
+' ===== DAO -> DB =====
+TDAO --> MySQL
+CDAO --> MySQL
+WDAO --> MySQL
+BDAO --> MySQL
+
+@enduml

@@ -4,7 +4,6 @@ import java.util.List;
 
 import core.Budget;
 import core.Category;
-import core.storage.BudgetDAO;
 import core.transaction.Transaction;
 import core.wallet.Wallet;
 import expensemanager.service.BudgetService;
@@ -15,18 +14,16 @@ import javafx.scene.layout.VBox;
 
 public class WalletBudgetManager {
 
-    private final BudgetDAO budgetDAO;
     private final BudgetService budgetService;
 
-    public WalletBudgetManager(BudgetDAO budgetDAO, BudgetService budgetService) {
-        this.budgetDAO = budgetDAO;
+    public WalletBudgetManager(BudgetService budgetService) {
         this.budgetService = budgetService;
     }
 
     public void handleShowAddBudgetDialog(List<Category> allCategories, Wallet currentWallet, VBox budgetsContainer) {
         Dialog<Budget> dialog = BudgetDialogFactory.createAddBudgetDialog(allCategories);
         dialog.showAndWait().ifPresent(budget -> {
-            budgetDAO.addBudget(budget, currentWallet.getId());
+            budgetService.addBudget(budget, currentWallet.getId());
             renderBudgets(budgetsContainer, currentWallet, allCategories);
         });
     }
@@ -45,12 +42,9 @@ public class WalletBudgetManager {
         }
         budgetsContainer.getChildren().clear();
 
-        List<Budget> budgets = budgetDAO.getBudgetsByWallet(currentWallet.getId());
+        List<Budget> budgets = budgetService.getBudgetsByWallet(currentWallet.getId());
 
         if (budgets.isEmpty()) {
-            // Man hinh nay da co san 1 nut "Create a New Budget" co dinh o header
-            // (xem #handleShowAddBudgetDialog trong WalletView.fxml), nen khong
-            // them nut nua o day de tranh trung.
             budgetsContainer.getChildren().add(BudgetCardFactory.createEmptyState());
             return;
         }

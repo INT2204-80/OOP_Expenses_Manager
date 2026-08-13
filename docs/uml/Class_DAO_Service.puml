@@ -1,0 +1,130 @@
+@startuml Class_DAO_Service
+' ====== CLEAN LIGHT THEME ======
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #90CAF9
+    HeaderBackgroundColor #E3F2FD
+    FontColor #212121
+    ArrowColor #1565C0
+    StereotypeFontColor #1565C0
+}
+
+title Class Diagram – DAO Interfaces & Service Layer
+
+' ============= DAO INTERFACES (blue) =============
+interface ICategoryDAO #E3F2FD {
+    + getOrCreateCategoryId(name, type, icon, color) : int
+    + getAllCategories() : List<Category>
+    + mergeCategories(sources, target)
+    + updateCategory(...)
+    + softDeleteCategory(name, type)
+}
+
+interface ITransactionDAO #E3F2FD {
+    + saveTransaction(t, walletId)
+    + deleteTransaction(id)
+    + updateTransaction(t, walletId)
+    + getTransactionsByWallet(wallet) : List<Transaction>
+    + getTotalAmountForPeriod(type, start, end) : double
+}
+
+interface IWalletDAO #E3F2FD {
+    + getAllWallets() : List<Wallet>
+    + addWallet(wallet)
+    + updateBalance(walletId, balance)
+    + updateWallet(wallet)
+    + deleteWallet(walletId)
+}
+
+interface IBudgetDAO #E3F2FD {
+    + addBudget(budget, walletId)
+    + updateBudget(budget)
+    + deleteBudget(id)
+    + getBudgetsByWallet(walletId) : List<Budget>
+}
+
+' ============= DAO IMPLEMENTATIONS (green) =============
+class CategoryDAO #E8F5E9 {
+}
+
+class TransactionDAO #E8F5E9 {
+    - categoryDAO : ICategoryDAO
+}
+
+class WalletDAO #E8F5E9 {
+}
+
+class BudgetDAO #E8F5E9 {
+}
+
+' ============= SERVICES (orange) =============
+class TransactionService #FFF3E0 {
+    - transactionDAO : ITransactionDAO
+    - walletDAO : IWalletDAO
+    --
+    + getTransactionsByWallet(wallet) : List<Transaction>
+    + addTransactionAndUpdateWallet(t, wallet)
+    + updateTransactionAndUpdateWallet(old, new, wallet)
+    + deleteTransactionAndUpdateWallet(t, wallet)
+    - processRecurringExpenses(txs, walletId)
+}
+
+class CategoryService #FFF3E0 {
+    - categoryDAO : ICategoryDAO
+    --
+    + getAllCategories() : List<Category>
+    + createCategory(name, type, icon, color) : int
+    + deleteCategories(categories)
+    + mergeCategories(sources, target)
+    + updateCategory(...)
+}
+
+class BudgetService #FFF3E0 {
+    - budgetDAO : IBudgetDAO
+    - categoryDAO : ICategoryDAO
+    --
+    + fetchAllCategories() : List<Category>
+    + addBudget(budget, walletId)
+    + updateBudget(budget)
+    + removeBudget(budgetId)
+    + getBudgetsByWallet(walletId) : List<Budget>
+}
+
+class DashboardService #FFF3E0 {
+    - walletDAO : IWalletDAO
+    - transactionDAO : ITransactionDAO
+    --
+    + getOrInitWallets() : List<Wallet>
+    + addWallet(wallet)
+    + deleteWallet(walletId)
+    + calculateTotalBalance(wallets) : double
+    + getOverviewData(start, end) : OverviewData
+}
+
+' ============= RELATIONSHIPS =============
+' Interface → Implementation
+ICategoryDAO <|.. CategoryDAO
+ITransactionDAO <|.. TransactionDAO
+IWalletDAO <|.. WalletDAO
+IBudgetDAO <|.. BudgetDAO
+
+' TransactionDAO depends on ICategoryDAO
+TransactionDAO --> ICategoryDAO : uses
+
+' Service → DAO (composition)
+TransactionService o-right- ITransactionDAO
+TransactionService o-right- IWalletDAO
+CategoryService o-right- ICategoryDAO
+BudgetService o-right- IBudgetDAO
+BudgetService o-right- ICategoryDAO
+DashboardService o-right- IWalletDAO
+DashboardService o-right- ITransactionDAO
+
+@enduml

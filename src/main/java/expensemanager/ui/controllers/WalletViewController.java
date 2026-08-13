@@ -36,10 +36,9 @@ public class WalletViewController {
 
     // ===== Sub-managers =====
     private final TransactionService transactionService;
-    private final TransactionDAO transactionDAO;
-    private final BudgetDAO budgetDAO;
-    private final WalletDAO walletDAO;
     private final BudgetService budgetService;
+    private final expensemanager.service.CategoryService categoryService;
+    private final core.storage.IWalletDAO walletDAO;
 
     private final PeriodFilterManager periodManager;
     private final WalletTransactionManager transactionManager;
@@ -49,32 +48,21 @@ public class WalletViewController {
 
     // Constructors
     public WalletViewController() {
-        this.transactionDAO = new TransactionDAO();
-        this.budgetDAO = new BudgetDAO();
-        this.walletDAO = new WalletDAO();
-        this.transactionService = new TransactionService();
-        this.budgetService = new BudgetService(this.budgetDAO, this.transactionDAO);
+        core.storage.ICategoryDAO catDao = new core.storage.CategoryDAO();
+        core.storage.ITransactionDAO tranDao = new core.storage.TransactionDAO(catDao);
+        core.storage.IWalletDAO walDao = new core.storage.WalletDAO();
+        core.storage.IBudgetDAO budDao = new core.storage.BudgetDAO();
+        
+        this.walletDAO = walDao;
+        this.categoryService = new expensemanager.service.CategoryService(catDao);
+        this.transactionService = new TransactionService(tranDao, walDao);
+        this.budgetService = new BudgetService(budDao, catDao);
 
         this.periodManager = new PeriodFilterManager();
         this.transactionManager = new WalletTransactionManager(this.transactionService);
         this.overviewTabController = new WalletOverviewTabController();
-        this.categoryManager = new WalletCategoryManager(this.budgetService, this.transactionDAO);
-        this.budgetManager = new WalletBudgetManager(this.budgetDAO, this.budgetService);
-    }
-
-    public WalletViewController(TransactionService transactionService, TransactionDAO transactionDAO,
-                                BudgetDAO budgetDAO, BudgetService budgetService) {
-        this.transactionDAO = transactionDAO;
-        this.budgetDAO = budgetDAO;
-        this.walletDAO = new WalletDAO();
-        this.transactionService = transactionService;
-        this.budgetService = budgetService;
-
-        this.periodManager = new PeriodFilterManager();
-        this.transactionManager = new WalletTransactionManager(this.transactionService);
-        this.overviewTabController = new WalletOverviewTabController();
-        this.categoryManager = new WalletCategoryManager(this.budgetService, this.transactionDAO);
-        this.budgetManager = new WalletBudgetManager(this.budgetDAO, this.budgetService);
+        this.categoryManager = new WalletCategoryManager(this.categoryService);
+        this.budgetManager = new WalletBudgetManager(this.budgetService);
     }
 
     // ===== FXML Labels & Charts =====

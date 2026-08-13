@@ -1,0 +1,86 @@
+@startuml Sequence_AddTransaction
+' ====== CLEAN LIGHT THEME ======
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+
+skinparam sequence {
+    ArrowColor #1565C0
+    LifeLineBorderColor #90CAF9
+    LifeLineBackgroundColor #F5F5F5
+    ParticipantBorderColor #1565C0
+    ParticipantBackgroundColor #E3F2FD
+    ParticipantFontColor #0D47A1
+    ActorBorderColor #E65100
+    ActorBackgroundColor #FFF3E0
+    DividerBackgroundColor #E8EAF6
+    DividerBorderColor #C5CAE9
+    GroupBackgroundColor #FAFAFA
+    GroupBorderColor #BDBDBD
+}
+skinparam note {
+    BackgroundColor #FFF9C4
+    BorderColor #F9A825
+    FontColor #212121
+}
+
+title Sequence Diagram – Thêm giao dịch chi tiêu
+
+actor "Người dùng" as User
+participant "WalletView\nController" as UI
+participant "WalletTransaction\nManager" as TM
+participant "Transaction\nService" as TS
+participant "Wallet" as W
+participant "Transaction\nDAO" as TDAO
+participant "Category\nDAO" as CDAO
+participant "WalletDAO" as WDAO
+database "MySQL" as DB
+
+== 1. Mở Dialog ==
+
+User -> UI : Bấm "Thêm giao dịch"
+UI -> TM : showAddTransactionDialog()
+TM --> User : Hiển thị Dialog nhập liệu
+
+== 2. Submit & Xử lý nghiệp vụ ==
+
+User -> TM : Nhập thông tin → Submit
+
+TM -> TS : addTransactionAndUpdateWallet(t, wallet)
+activate TS #FFF3E0
+
+TS -> W : wallet.addTransaction(t)
+note right of W
+  Constructor **Expense**
+  tự gọi wallet.withdraw()
+  → Trừ số dư ví
+end note
+
+== 3. Lưu vào Database ==
+
+TS -> TDAO : saveTransaction(t, walletId)
+activate TDAO #E8F5E9
+
+TDAO -> CDAO : getOrCreateCategoryId(...)
+CDAO -> DB : SELECT / INSERT categories
+DB --> CDAO : categoryId
+CDAO --> TDAO : categoryId
+
+TDAO -> DB : INSERT INTO transactions
+DB --> TDAO : generatedId
+deactivate TDAO
+
+TS -> WDAO : updateBalance(walletId, balance)
+WDAO -> DB : UPDATE wallets SET balance
+WDAO --> TS : done
+
+deactivate TS
+
+== 4. Cập nhật giao diện ==
+
+TS --> TM : success
+TM -> UI : refreshTransactionsView()
+UI --> User : Cập nhật danh sách,\nbiểu đồ, số dư
+
+@enduml

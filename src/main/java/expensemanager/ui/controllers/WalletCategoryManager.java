@@ -8,8 +8,7 @@ import java.util.Set;
 
 import core.Category;
 import core.TransactionType;
-import core.storage.TransactionDAO;
-import expensemanager.service.BudgetService;
+import expensemanager.service.CategoryService;
 import expensemanager.ui.factory.CategoryDialogFactory;
 import expensemanager.ui.factory.CategoryRowFactory;
 import expensemanager.ui.util.ColorPalette;
@@ -23,15 +22,13 @@ import javafx.scene.layout.VBox;
 
 public class WalletCategoryManager {
 
-    private final BudgetService budgetService;
-    private final TransactionDAO transactionDAO;
+    private final CategoryService categoryService;
 
     private final List<Category> allCategories = new ArrayList<>();
     private final Set<Category> selectedCategories = new HashSet<>();
 
-    public WalletCategoryManager(BudgetService budgetService, TransactionDAO transactionDAO) {
-        this.budgetService = budgetService;
-        this.transactionDAO = transactionDAO;
+    public WalletCategoryManager(CategoryService categoryService) {
+        this.categoryService = categoryService;
     }
 
     public List<Category> getAllCategories() {
@@ -71,7 +68,7 @@ public class WalletCategoryManager {
         allCategories.clear();
         selectedCategories.clear();
 
-        allCategories.addAll(budgetService.fetchAllCategories());
+        allCategories.addAll(categoryService.getAllCategories());
 
         for (Category cat : allCategories) {
             HBox row = CategoryRowFactory.createCategoryRow(
@@ -115,7 +112,7 @@ public class WalletCategoryManager {
         }
 
         try {
-            transactionDAO.getOrCreateCategoryId(name.trim(), type.toUpperCase(), icon, color);
+            categoryService.createCategory(name.trim(), type.toUpperCase(), icon, color);
             newCategoryNameField.clear();
             loadCategoriesToUI(incomeCategoriesContainer, expenseCategoriesContainer, refreshFilters);
         } catch (SQLException e) {
@@ -132,15 +129,13 @@ public class WalletCategoryManager {
         alert.setHeaderText("Bạn có chắc chắn muốn xóa " + selectedCategories.size() + " danh mục đã chọn?");
 
         if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-            for (Category cat : selectedCategories) {
-                try {
-                    transactionDAO.softDeleteCategory(cat.getName(), cat.getType().name());
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
+            try {
+                categoryService.deleteCategories(new ArrayList<>(selectedCategories));
+                selectedCategories.clear();
+                loadCategoriesToUI(incomeCategoriesContainer, expenseCategoriesContainer, refreshFilters);
+            } catch (SQLException e) {
+                e.printStackTrace();
             }
-            selectedCategories.clear();
-            loadCategoriesToUI(incomeCategoriesContainer, expenseCategoriesContainer, refreshFilters);
         }
     }
 
@@ -163,7 +158,7 @@ public class WalletCategoryManager {
             sources.remove(target);
 
             try {
-                transactionDAO.mergeCategories(sources, target);
+                categoryService.mergeCategories(sources, target);
                 selectedCategories.clear();
                 loadCategoriesToUI(incomeCategoriesContainer, expenseCategoriesContainer, refreshFilters);
             } catch (SQLException e) {
@@ -177,7 +172,9 @@ public class WalletCategoryManager {
 
     private void deleteCategorySoft(Category cat, VBox incomeContainer, VBox expenseContainer, Runnable refreshFilters) {
         try {
-            transactionDAO.softDeleteCategory(cat.getName(), cat.getType().name());
+            List<Category> list = new ArrayList<>();
+            list.add(cat);
+            categoryService.deleteCategories(list);
             loadCategoriesToUI(incomeContainer, expenseContainer, refreshFilters);
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -187,7 +184,7 @@ public class WalletCategoryManager {
     private void showEditCategoryDialog(Category cat, VBox incomeContainer, VBox expenseContainer, Runnable refreshFilters) {
         CategoryDialogFactory.createEditDialog(cat).showAndWait().ifPresent(result -> {
             try {
-                transactionDAO.updateCategory(
+                categoryService.updateCategory(
                         cat.getName(), cat.getType().name(),
                         result.newName, result.newType, result.newIcon, result.newColor);
                 loadCategoriesToUI(incomeContainer, expenseContainer, refreshFilters);

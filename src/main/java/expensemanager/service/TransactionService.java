@@ -1,10 +1,11 @@
 package expensemanager.service;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
-import core.storage.TransactionDAO;
-import core.storage.WalletDAO;
+import core.storage.ITransactionDAO;
+import core.storage.IWalletDAO;
 import core.transaction.Expense;
 import core.transaction.Income;
 import core.transaction.RecurringExpense;
@@ -13,37 +14,62 @@ import core.wallet.Wallet;
 
 public class TransactionService {
     
-    private final TransactionDAO transactionDAO = new TransactionDAO();
-    private final WalletDAO walletDAO = new WalletDAO();
+    private final ITransactionDAO transactionDAO;
+    private final IWalletDAO walletDAO;
+
+    public TransactionService(ITransactionDAO transactionDAO, IWalletDAO walletDAO) {
+        this.transactionDAO = transactionDAO;
+        this.walletDAO = walletDAO;
+    }
 
     /**
      * Lấy danh sách toàn bộ giao dịch của một ví
      */
     public List<Transaction> getTransactionsByWallet(Wallet wallet) {
-        return transactionDAO.getTransactionsByWallet(wallet);
+        List<Transaction> transactions = transactionDAO.getTransactionsByWallet(wallet);
+        processRecurringExpenses(transactions, wallet.getId());
+        return transactions;
+    }
+
+    private void processRecurringExpenses(List<Transaction> transactions, int walletId) {
+        List<Transaction> newExpenses = new ArrayList<>();
+        for (Transaction t : transactions) {
+            if (t instanceof RecurringExpense) {
+                RecurringExpense re = (RecurringExpense) t;
+                int oldPassed = re.getPassedPeriods();
+                re.nextDueDate(); // updates passedPeriods internally
+                int newPassed = re.getPassedPeriods();
+                
+                if (newPassed > oldPassed) {
+                    for (int i = oldPassed + 1; i <= newPassed; i++) {
+                        LocalDate generatedDate = re.getDate().plus(re.getPeriod().multipliedBy(i));
+                        Expense newExpense = new Expense(0, re.getAmount(), generatedDate, 
+                            re.getNote() + " (Auto-generated)", re.getCategory(), re.getWallet(), re.getPaymentMethod());
+                        newExpenses.add(newExpense);
+                    }
+                    // Update the RecurringExpense in DB
+                    transactionDAO.updateTransaction(re, walletId);
+                }
+            }
+        }
+        
+        for (Transaction newExp : newExpenses) {
+            transactionDAO.saveTransaction(newExp, walletId);
+            transactions.add(newExp);
+        }
     }
 
     /**
      * Thêm giao dịch mới, tự động cập nhật số dư ví và lưu Database
      */
     public void addTransactionAndUpdateWallet(Transaction t, Wallet wallet) {
-        wallet.addTransaction(t); // Hàm này bên trong Wallet có thể đã xử lý cộng/trừ số dư
-        
+        wallet.addTransaction(t); 
         transactionDAO.saveTransaction(t, wallet.getId());
         walletDAO.updateBalance(wallet.getId(), wallet.getBalance());
     }
 
     /**
-     * Them mot RecurringExpense moi VOI ngay khoi tao trong qua khu, kem backfill
-     * (sinh them) cac giao dich Expense tuong ung so chu ky da qua (re.getPassedPeriods()).
-     *
-     * <p>Luu y: khoan tien cho ban than RecurringExpense (1 lan dau) da duoc tru vao
-     * wallet ngay trong constructor cua Expense (lop cha). Ham nay chi can tru them
-     * cho tung ky da qua (moi ky mot Expense rieng, danh dau "(Auto-generated)" giong
-     * co che processRecurringExpenses() ben TransactionDAO khi load lai tu DB).
-     *
-     * <p>re.getPassedPeriods() phai duoc tinh san (goi re.nextDueDate() truoc do) boi
-     * noi goi ham nay, vi day la noi hien Alert xac nhan voi nguoi dung truoc khi goi.
+     * Thêm một RecurringExpense với backfill
      */
     public void addRecurringExpenseWithBackfill(RecurringExpense re, Wallet wallet) {
         int passed = re.getPassedPeriods();
@@ -55,7 +81,6 @@ public class TransactionService {
             LocalDate generatedDate = re.getDate().plus(re.getPeriod().multipliedBy(i));
             Expense backfillExpense = new Expense(0, re.getAmount(), generatedDate,
                     re.getNote() + " (Auto-generated)", re.getCategory(), wallet, re.getPaymentMethod());
-            // Constructor cua Expense da tu tru tien vao wallet
             wallet.addTransaction(backfillExpense);
             transactionDAO.saveTransaction(backfillExpense, wallet.getId());
         }
@@ -67,12 +92,10 @@ public class TransactionService {
      * Cập nhật giao dịch (Sửa), tự động tính toán lại số dư chênh lệch và lưu Database
      */
     public void updateTransactionAndUpdateWallet(Transaction oldT, Transaction newT, Wallet wallet) {
-        // Giữ lại số kỳ đã qua nếu là giao dịch lặp lại
         if (newT instanceof RecurringExpense && oldT instanceof RecurringExpense) {
             ((RecurringExpense) newT).setPassedPeriods(((RecurringExpense) oldT).getPassedPeriods());
         }
 
-        // 1. Hoàn tác (Revert) số tiền của giao dịch cũ
         if (oldT instanceof Income) {
             wallet.withdraw(oldT.getAmount());
         } else {
@@ -80,10 +103,8 @@ public class TransactionService {
         }
         wallet.getTransactions().remove(oldT);
         
-        // 2. Thêm giao dịch mới vào (Constructor của newT hoặc addTransaction sẽ cập nhật lại số dư)
         wallet.getTransactions().add(newT);
 
-        // 3. Cập nhật xuống Database
         transactionDAO.updateTransaction(newT, wallet.getId());
         walletDAO.updateBalance(wallet.getId(), wallet.getBalance());
     }
@@ -94,7 +115,6 @@ public class TransactionService {
     public void deleteTransactionAndUpdateWallet(Transaction t, Wallet wallet) {
         transactionDAO.deleteTransaction(t.getId());
 
-        // Hoàn tác số tiền
         if (t instanceof Income) {
             wallet.withdraw(t.getAmount());
         } else {

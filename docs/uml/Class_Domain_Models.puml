@@ -1,0 +1,168 @@
+@startuml Class_Domain_Models
+' ====== CLEAN LIGHT THEME ======
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #90CAF9
+    HeaderBackgroundColor #E3F2FD
+    FontColor #212121
+    ArrowColor #1565C0
+    StereotypeFontColor #1565C0
+}
+
+title Class Diagram – Domain Models (core.*)
+
+' ============= ENUMS =============
+enum TransactionType #FFF9C4 {
+    INCOME
+    EXPENSE
+}
+
+enum WalletType #FFF9C4 {
+    CASH
+    BANK
+    EWALLET
+}
+
+enum Period #FFF9C4 {
+    ONCE
+    DAILY
+    WEEKLY
+    BIWEEKLY
+    MONTHLY
+    YEARLY
+    --
+    + getDisplayName() : String
+    + toJavaPeriod() : java.time.Period
+}
+
+' ============= WALLET =============
+abstract class Wallet #E3F2FD {
+    - id : int
+    - name : String
+    - balance : double
+    - currency : String
+    - transactions : List<Transaction>
+    --
+    + deposit(amount : double)
+    + withdraw(amount : double)
+    + {abstract} getWalletType() : WalletType
+    + addTransaction(t : Transaction)
+    + getBalance() : double
+    + setBalance(balance : double) : double
+}
+
+class CashWallet #E8F5E9 {
+    + getWalletType() : WalletType
+}
+
+class BankAccount #E8F5E9 {
+    - bankName : String
+    - accountNumber : String
+    --
+    + getBankName() : String
+    + getAccountNumber() : String
+    + getWalletType() : WalletType
+}
+
+class EWallet #E8F5E9 {
+    - provider : String
+    --
+    + getProvider() : String
+    + getWalletType() : WalletType
+}
+
+' ============= TRANSACTION =============
+abstract class Transaction #E3F2FD {
+    - id : int
+    - amount : double
+    - date : LocalDate
+    - note : String
+    - category : Category
+    - wallet : Wallet
+    --
+    + {abstract} getType() : TransactionType
+    + {abstract} getSignedAmount() : double
+}
+
+class Income #E8F5E9 {
+    - source : String
+    --
+    + getType() : TransactionType
+    + getSignedAmount() : double
+}
+
+class Expense #FFEBEE {
+    - paymentMethod : String
+    --
+    + getType() : TransactionType
+    + getSignedAmount() : double
+}
+
+class RecurringExpense #FFCDD2 {
+    - period : java.time.Period
+    - passedPeriods : int
+    - endDate : LocalDate
+    --
+    + nextDueDate() : LocalDate
+    + getOccurrencesBetween(start, end) : List<LocalDate>
+}
+
+class PendingRecurringOccurrence #FFF3E0 {
+    - source : RecurringExpense
+    --
+    + getType() : TransactionType
+    + getSignedAmount() : double
+}
+
+' ============= CATEGORY & BUDGET =============
+class Category #F3E5F5 {
+    - name : String
+    - type : TransactionType
+    - icon : String
+    - color : String
+}
+
+class Budget #FFF3E0 {
+    - id : int
+    - name : String
+    - limitAmount : double
+    - currentSpent : double
+    - category : Category
+    - period : Period
+    - startDate : LocalDate
+    - endDate : LocalDate
+    --
+    + isExceed() : boolean
+    + getRemainingAmount() : double
+    + getUsagePercentage() : double
+    + calcDailyAllowance(date) : double
+    + appliesTo(t : Transaction) : boolean
+    + updateSpentFromTransactions(txs)
+}
+
+' ============= RELATIONSHIPS =============
+Wallet <|-- CashWallet
+Wallet <|-- BankAccount
+Wallet <|-- EWallet
+
+Transaction <|-- Income
+Transaction <|-- Expense
+Expense <|-- RecurringExpense
+Transaction <|-- PendingRecurringOccurrence
+
+PendingRecurringOccurrence --> RecurringExpense : source
+
+Transaction "many" --> "1" Category
+Transaction "many" --> "1" Wallet
+Budget --> "1" Category
+Budget --> "1" Period
+Category --> "1" TransactionType
+
+@enduml

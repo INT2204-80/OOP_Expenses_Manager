@@ -1,0 +1,137 @@
+@startuml Class_UI_Controllers
+' ====== CLEAN LIGHT THEME ======
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #90CAF9
+    HeaderBackgroundColor #E3F2FD
+    FontColor #212121
+    ArrowColor #1565C0
+    StereotypeFontColor #1565C0
+}
+
+title Class Diagram – UI Controllers & Factories
+
+' ============= CONTROLLERS (purple) =============
+class DashboardController #F3E5F5 {
+    - dashboardService : DashboardService
+    --
+    + initialize()
+    - loadWalletCards()
+    - handleAddWallet()
+}
+
+class WalletViewController #F3E5F5 {
+    - transactionService : TransactionService
+    - budgetService : BudgetService
+    - categoryService : CategoryService
+    --
+    + initData(wallet : Wallet)
+    - refreshTransactionsView()
+    - refreshBalanceLabels()
+    - switchTab(tab, menu)
+}
+
+class BudgetsViewController #F3E5F5 {
+    - budgetService : BudgetService
+    --
+    + initialize()
+    - loadBudgets()
+    - handleEditBudget(budget)
+    - handleDeleteBudget(budget)
+}
+
+' ============= MANAGERS (blue) =============
+class WalletTransactionManager #E3F2FD {
+    - transactionService : TransactionService
+    --
+    + showAddTransactionDialog(...)
+    + renderTransactions(...)
+    + getFilteredTransactions(...) : List
+}
+
+class WalletCategoryManager #E3F2FD {
+    - categoryService : CategoryService
+    --
+    + loadCategoriesToUI(...)
+    + handleCreateCategory(...)
+    + handleDeleteCategories(...)
+    + handleMergeCategories(...)
+}
+
+class WalletBudgetManager #E3F2FD {
+    - budgetService : BudgetService
+    --
+    + handleShowAddBudgetDialog(...)
+    + renderBudgets(...)
+}
+
+class WalletOverviewTabController #E3F2FD {
+    + updateOverviewData(...)
+    + setBalanceViewMode(mode)
+    + setChangesViewMode(mode)
+}
+
+class PeriodFilterManager #E3F2FD {
+    - startDate : LocalDate
+    - endDate : LocalDate
+    --
+    + handlePrevPeriod(callback)
+    + handleNextPeriod(callback)
+    + handleCustomPeriod(callback)
+}
+
+' ============= FACTORIES (green) =============
+class WalletCardFactory <<Factory>> #E8F5E9 {
+    + {static} createWalletCard(...) : VBox
+}
+
+class TransactionDialogFactory <<Factory>> #E8F5E9 {
+    + {static} createAddDialog(...) : Dialog
+    + {static} createEditDialog(...) : Dialog
+}
+
+class TransactionRowFactory <<Factory>> #E8F5E9 {
+    + {static} createTransactionRow(...) : HBox
+}
+
+class BudgetDialogFactory <<Factory>> #E8F5E9 {
+    + {static} createAddBudgetDialog(...) : Dialog
+    + {static} createEditBudgetDialog(...) : Dialog
+}
+
+class BudgetCardFactory <<Factory>> #E8F5E9 {
+    + {static} createBudgetCard(...) : VBox
+}
+
+class CategoryDialogFactory <<Factory>> #E8F5E9 {
+    + {static} createEditDialog(...) : Dialog
+}
+
+class CategoryRowFactory <<Factory>> #E8F5E9 {
+    + {static} createCategoryRow(...) : HBox
+}
+
+' ============= COMPOSITION =============
+WalletViewController *-- WalletTransactionManager
+WalletViewController *-- WalletCategoryManager
+WalletViewController *-- WalletBudgetManager
+WalletViewController *-- WalletOverviewTabController
+WalletViewController *-- PeriodFilterManager
+
+' ============= USAGE =============
+DashboardController ..> WalletCardFactory : uses
+WalletTransactionManager ..> TransactionDialogFactory : uses
+WalletTransactionManager ..> TransactionRowFactory : uses
+WalletBudgetManager ..> BudgetDialogFactory : uses
+WalletBudgetManager ..> BudgetCardFactory : uses
+WalletCategoryManager ..> CategoryDialogFactory : uses
+WalletCategoryManager ..> CategoryRowFactory : uses
+
+@enduml

@@ -1,0 +1,102 @@
+@startuml Sequence_Dashboard
+' ====== CLEAN LIGHT THEME ======
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+
+skinparam sequence {
+    ArrowColor #1565C0
+    LifeLineBorderColor #90CAF9
+    LifeLineBackgroundColor #F5F5F5
+    ParticipantBorderColor #1565C0
+    ParticipantBackgroundColor #E3F2FD
+    ParticipantFontColor #0D47A1
+    ActorBorderColor #E65100
+    ActorBackgroundColor #FFF3E0
+    DividerBackgroundColor #E8EAF6
+    DividerBorderColor #C5CAE9
+    GroupBackgroundColor #FAFAFA
+    GroupBorderColor #BDBDBD
+}
+skinparam note {
+    BackgroundColor #FFF9C4
+    BorderColor #F9A825
+    FontColor #212121
+}
+
+title Sequence Diagram – Dashboard Tổng quan
+
+actor "Người dùng" as User
+participant "Dashboard\nController" as DC
+participant "Dashboard\nService" as DS
+participant "WalletDAO" as WDAO
+participant "Transaction\nDAO" as TDAO
+database "MySQL" as DB
+
+User -> DC : Mở ứng dụng / Dashboard
+activate DC #F3E5F5
+
+== 1. Lấy danh sách ví ==
+
+DC -> DS : getOrInitWallets()
+activate DS #FFF3E0
+
+DS -> WDAO : getAllWallets()
+activate WDAO #E8F5E9
+WDAO -> DB : SELECT * FROM wallets
+DB --> WDAO : List<Wallet>
+WDAO --> DS : List<Wallet>
+deactivate WDAO
+
+alt Chưa có ví (isEmpty)
+    DS -> WDAO : addWallet(new CashWallet)
+    WDAO -> DB : INSERT
+    DS -> WDAO : getAllWallets()
+    WDAO -> DB : SELECT
+    WDAO --> DS : List<Wallet>
+end
+
+DS --> DC : List<Wallet>
+
+== 2. Hiển thị thẻ ví ==
+
+DC -> DS : calculateTotalBalance(wallets)
+DS --> DC : totalBalance
+DC -> DC : totalBalanceLabel.setText()
+
+loop Mỗi Wallet trong list
+    DC -> DC : createWalletCard(wallet)
+    note right of DC
+        Tạo giao diện thẻ ví,
+        gắn sự kiện click mở ví
+    end note
+end
+
+== 3. Lấy dữ liệu tổng quan ==
+
+DC -> DS : getOverviewData(startOfMonth, today)
+
+DS -> TDAO : getTotalAmountForPeriod("INCOME", start, end)
+activate TDAO #E8F5E9
+TDAO -> DB : SELECT SUM(amount) WHERE type='INCOME'
+DB --> TDAO : totalIncome
+TDAO --> DS
+deactivate TDAO
+
+DS -> TDAO : getTotalAmountForPeriod("EXPENSE", start, end)
+activate TDAO #E8F5E9
+TDAO -> DB : SELECT SUM(amount) WHERE type='EXPENSE'
+DB --> TDAO : totalExpense
+TDAO --> DS
+deactivate TDAO
+
+DS --> DC : OverviewData(income, expense, netChange)
+deactivate DS
+
+DC -> DC : Cập nhật UI (Thu, Chi, Dòng tiền)
+DC --> User : Hiển thị Dashboard hoàn chỉnh
+
+deactivate DC
+
+@enduml

@@ -14,7 +14,7 @@ import core.wallet.CashWallet;
 import core.wallet.EWallet;
 import core.wallet.Wallet;
 
-public class WalletDAO {
+public class WalletDAO implements IWalletDAO {
 
     public List<Wallet> getAllWallets() {
         List<Wallet> wallets = new ArrayList<>();

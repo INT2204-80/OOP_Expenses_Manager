@@ -33,10 +33,9 @@ public class RecurringExpense extends Expense {
     }
 
     /**
-     * GOAL : Chỉnh sửa khi muốn tính toán ngày đến hạn tiếp theo dựa trên ngày hiện tại và chu kỳ định kỳ.
-     * Neu co endDate, se KHONG advance qua cac ky co ngay den han sau endDate -
-     * tuc la khong sinh them giao dich moi sau ngay ket thuc.
-     * @return
+     * Tính toán ngày đến hạn tiếp theo dựa trên chu kỳ.
+     * Nếu có endDate, sẽ không vượt qua endDate.
+     * @return Ngày đến hạn tiếp theo.
      */
 
     public LocalDate nextDueDate() {
@@ -118,8 +117,8 @@ public class RecurringExpense extends Expense {
     }
 
     /**
-     * Sets the period for the recurring expense. The period must be a non-null value.
-     * @param period
+     * Thiết lập chu kỳ lặp lại.
+     * @param period Chu kỳ mới (không được null).
      */
     
     public void setPeriod(Period period) {

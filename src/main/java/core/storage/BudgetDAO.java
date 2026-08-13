@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BudgetDAO {
+public class BudgetDAO implements IBudgetDAO {
 
     static {
         // Automatically create the budgets table if it doesn't exist

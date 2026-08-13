@@ -16,13 +16,13 @@ public abstract class Transaction {
     
 
     /**
-     * co the dung getter/setter cho constructor, tuy nhien nen xem xet lai logic nay
-     * @param id
-     * @param amount
-     * @param date
-     * @param note
-     * @param category
-     * @param wallet
+     * Khởi tạo một giao dịch.
+     * @param id ID của giao dịch (do cơ sở dữ liệu quản lý, bằng 0 nếu chưa lưu).
+     * @param amount Số tiền giao dịch.
+     * @param date Ngày giao dịch.
+     * @param note Ghi chú cho giao dịch.
+     * @param category Danh mục của giao dịch.
+     * @param wallet Ví lưu trữ giao dịch.
      */
     public Transaction(int id, double amount, LocalDate date, String note, Category category, Wallet wallet) {
         this.id = id;
@@ -63,10 +63,8 @@ public abstract class Transaction {
 
     /**
      * Sets the ID of the transaction. The ID must be a non-negative integer.
-     * Chinh ID , Chua chac co kha nang nguoi dung duoc set ID hay khong, nen can xem xet lai logic nay
-     * @param id
+     * @param id ID mới cần set
      */
-
     public void setId(int id) {
         if (id < 0) {
             throw new IllegalArgumentException("ID cannot be negative");
@@ -97,7 +95,6 @@ public abstract class Transaction {
 
     public void setAmount(double amount) {
         this.amount = validateAmount(amount);
-        //this.amount = amount;// sua doi 23/7
     }
 
     public LocalDate getDate() {

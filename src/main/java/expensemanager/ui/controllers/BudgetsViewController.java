@@ -30,16 +30,17 @@ public class BudgetsViewController {
     private FlowPane budgetsContainer;
 
     private final BudgetService budgetService;
-    private final BudgetDAO budgetDAO;
-    private final TransactionDAO transactionDAO;
-    private final WalletDAO walletDAO;
+    private final core.storage.IBudgetDAO budgetDAO;
+    private final core.storage.ITransactionDAO transactionDAO;
+    private final core.storage.IWalletDAO walletDAO;
 
     // Injection dependencies (chuẩn DIP)
     public BudgetsViewController() {
-        this.budgetDAO = new BudgetDAO();
-        this.transactionDAO = new TransactionDAO();
-        this.walletDAO = new WalletDAO();
-        this.budgetService = new BudgetService(this.budgetDAO, this.transactionDAO);
+        core.storage.ICategoryDAO catDao = new core.storage.CategoryDAO();
+        this.budgetDAO = new core.storage.BudgetDAO();
+        this.transactionDAO = new core.storage.TransactionDAO(catDao);
+        this.walletDAO = new core.storage.WalletDAO();
+        this.budgetService = new BudgetService(this.budgetDAO, catDao);
     }
 
     @FXML

@@ -10,8 +10,13 @@ import core.wallet.CashWallet;
 import core.wallet.Wallet;
 
 public class DashboardService {
-    private final WalletDAO walletDAO = new WalletDAO();
-    private final TransactionDAO transactionDAO = new TransactionDAO();
+    private final core.storage.IWalletDAO walletDAO = new core.storage.WalletDAO();
+    private final core.storage.ITransactionDAO transactionDAO;
+
+    public DashboardService() {
+        core.storage.ICategoryDAO catDao = new core.storage.CategoryDAO();
+        this.transactionDAO = new core.storage.TransactionDAO(catDao);
+    }
 
     public List<Wallet> getOrInitWallets() {
         List<Wallet> wallets = walletDAO.getAllWallets();

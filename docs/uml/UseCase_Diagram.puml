@@ -1,0 +1,89 @@
+@startuml UseCase_Diagram
+' ====== CLEAN LIGHT THEME ======
+skinparam backgroundColor white
+skinparam handwritten false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 13
+skinparam shadowing false
+
+skinparam usecase {
+    BackgroundColor #E8F5E9
+    BorderColor #43A047
+    FontColor #1B5E20
+    ArrowColor #1565C0
+    StereotypeFontColor #666
+}
+skinparam actor {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+    FontColor #E65100
+}
+skinparam rectangle {
+    BackgroundColor #FAFAFA
+    BorderColor #BDBDBD
+    FontColor #212121
+    RoundCorner 20
+    FontStyle bold
+}
+
+left to right direction
+
+actor "Người dùng" as User
+
+rectangle "💳 Quản lý Ví" {
+    usecase "Tạo ví mới" as UC1
+    usecase "Xem danh sách ví" as UC2
+    usecase "Chỉnh sửa ví" as UC3
+    usecase "Xóa ví" as UC4
+}
+
+rectangle "📝 Quản lý Giao dịch" {
+    usecase "Thêm giao dịch Thu/Chi" as UC5
+    usecase "Sửa giao dịch" as UC6
+    usecase "Xóa giao dịch" as UC7
+    usecase "Chi tiêu định kỳ" as UC8
+    usecase "Lọc giao dịch" as UC9
+}
+
+rectangle "🏷️ Quản lý Danh mục" {
+    usecase "Tạo danh mục" as UC10
+    usecase "Sửa danh mục" as UC11
+    usecase "Gộp danh mục" as UC12
+    usecase "Xóa mềm danh mục" as UC13
+}
+
+rectangle "🎯 Quản lý Ngân sách" {
+    usecase "Tạo ngân sách" as UC14
+    usecase "Theo dõi tiến độ" as UC15
+}
+
+rectangle "📊 Thống kê" {
+    usecase "Dashboard tổng quan" as UC16
+    usecase "Biểu đồ & Phân tích" as UC17
+}
+
+User -- UC1
+User -- UC2
+User -- UC3
+User -- UC4
+
+User -- UC5
+User -- UC6
+User -- UC7
+User -- UC8
+User -- UC9
+
+User -- UC10
+User -- UC11
+User -- UC12
+User -- UC13
+
+User -- UC14
+User -- UC15
+
+User -- UC16
+User -- UC17
+
+UC8 .> UC5 : <<extend>>
+
+@enduml

@@ -1,0 +1,79 @@
+@startuml Sequence_MergeCategories
+' ====== CLEAN LIGHT THEME ======
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+
+skinparam sequence {
+    ArrowColor #1565C0
+    LifeLineBorderColor #90CAF9
+    LifeLineBackgroundColor #F5F5F5
+    ParticipantBorderColor #1565C0
+    ParticipantBackgroundColor #E3F2FD
+    ParticipantFontColor #0D47A1
+    ActorBorderColor #E65100
+    ActorBackgroundColor #FFF3E0
+    DividerBackgroundColor #E8EAF6
+    DividerBorderColor #C5CAE9
+    GroupBackgroundColor #FAFAFA
+    GroupBorderColor #BDBDBD
+}
+skinparam note {
+    BackgroundColor #FFF9C4
+    BorderColor #F9A825
+    FontColor #212121
+}
+
+title Sequence Diagram – Gộp danh mục (Merge Categories)
+
+actor "Người dùng" as User
+participant "WalletCategory\nManager" as UI
+participant "Category\nService" as CS
+participant "Category\nDAO" as CDAO
+database "MySQL" as DB
+
+User -> UI : Chọn ≥ 2 danh mục\n→ Bấm "Gộp"
+activate UI
+
+UI --> User : ChoiceDialog:\n"Chọn danh mục ĐÍCH"
+
+User -> UI : Chọn target
+
+== Xử lý gộp ==
+
+UI -> CS : mergeCategories(sources, target)
+activate CS #FFF3E0
+
+CS -> CDAO : mergeCategories(sources, target)
+activate CDAO #E8F5E9
+
+CDAO -> DB : SELECT id FROM categories\nWHERE name = target
+DB --> CDAO : targetId
+
+CDAO -> DB : BEGIN TRANSACTION
+
+loop Mỗi danh mục nguồn (source)
+    CDAO -> DB : UPDATE transactions\nSET category_id = targetId\nWHERE category_id = sourceId
+    note right of DB
+      Chuyển toàn bộ giao dịch
+      sang danh mục đích
+    end note
+
+    CDAO -> DB : UPDATE categories\nSET is_deleted = TRUE\nWHERE id = sourceId
+    note right of DB
+      Xóa mềm danh mục nguồn
+    end note
+end
+
+CDAO -> DB : COMMIT
+deactivate CDAO
+
+CS --> UI : done
+deactivate CS
+
+UI -> UI : loadCategoriesToUI()
+UI --> User : Danh sách đã cập nhật
+deactivate UI
+
+@enduml

@@ -1,0 +1,91 @@
+@startuml Sequence_RecurringExpense
+' ====== CLEAN LIGHT THEME ======
+skinparam backgroundColor white
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+
+skinparam sequence {
+    ArrowColor #1565C0
+    LifeLineBorderColor #90CAF9
+    LifeLineBackgroundColor #F5F5F5
+    ParticipantBorderColor #1565C0
+    ParticipantBackgroundColor #E3F2FD
+    ParticipantFontColor #0D47A1
+    ActorBorderColor #E65100
+    ActorBackgroundColor #FFF3E0
+    DividerBackgroundColor #E8EAF6
+    DividerBorderColor #C5CAE9
+    GroupBackgroundColor #FAFAFA
+    GroupBorderColor #BDBDBD
+}
+skinparam note {
+    BackgroundColor #FFF9C4
+    BorderColor #F9A825
+    FontColor #212121
+}
+
+title Sequence Diagram – Xử lý chi tiêu định kỳ (Recurring)
+
+actor "Người dùng" as User
+participant "WalletView\nController" as UI
+participant "Transaction\nService" as TS
+participant "Transaction\nDAO" as TDAO
+participant "Recurring\nExpense" as RE
+database "MySQL" as DB
+
+User -> UI : Mở / Chọn Wallet
+UI -> TS : getTransactionsByWallet(wallet)
+activate TS #FFF3E0
+
+== 1. Tải giao dịch từ DB ==
+
+TS -> TDAO : getTransactionsByWallet(wallet)
+activate TDAO #E8F5E9
+TDAO -> DB : SELECT t.*, c.*\nFROM transactions t\nJOIN categories c ...
+DB --> TDAO : ResultSet
+note right of TDAO
+  Xây dựng các đối tượng:
+  Income, Expense,
+  **RecurringExpense**
+end note
+TDAO --> TS : List<Transaction>
+deactivate TDAO
+
+== 2. Kiểm tra & phát sinh kỳ mới ==
+
+TS -> TS : processRecurringExpenses(list, walletId)
+
+loop Mỗi RecurringExpense (re)
+
+    TS -> RE : oldPassed = getPassedPeriods()
+    TS -> RE : nextDueDate()
+    note right of RE
+      So sánh với ngày hôm nay.
+      Nếu đã qua hạn → tăng
+      passedPeriods, tính
+      currentDueDate mới.
+    end note
+    TS -> RE : newPassed = getPassedPeriods()
+
+    alt newPassed > oldPassed
+
+        loop i = oldPassed+1 → newPassed
+            TS -> TS : Tạo Expense mới\n(Auto-generated)
+            TS -> TDAO : saveTransaction(newExpense)
+            TDAO -> DB : INSERT INTO transactions
+        end
+
+        TS -> TDAO : updateTransaction(re)
+        TDAO -> DB : UPDATE passed_periods
+
+    end
+end
+
+== 3. Trả kết quả ==
+
+TS --> UI : List đầy đủ\n(kèm kỳ phát sinh)
+deactivate TS
+UI --> User : Hiển thị danh sách giao dịch
+
+@enduml
