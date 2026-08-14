@@ -106,16 +106,19 @@ public class WalletDAO implements IWalletDAO {
     }
 
     public void updateBalance(int walletId, double newBalance) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            updateBalance(conn, walletId, newBalance);
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error updating wallet balance", e);
+        }
+    }
+
+    public void updateBalance(Connection conn, int walletId, double newBalance) throws SQLException {
         String sql = "UPDATE wallets SET balance = ? WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-             
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setDouble(1, newBalance);
             pstmt.setInt(2, walletId);
             pstmt.executeUpdate();
-            
-        } catch (SQLException e) {
-            throw new RuntimeException("Database error updating wallet balance", e);
         }
     }
 

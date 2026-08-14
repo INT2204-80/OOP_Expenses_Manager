@@ -52,7 +52,7 @@ public class WalletCreationWithTransactionTest {
         assertEquals(400.0, income.getSignedAmount());
         assertEquals("Client", income.getSource());
         assertEquals(wallet, income.getWallet());
-        assertEquals(1400.0, wallet.getBalance()); // Check if the wallet balance is updated after income
+        assertEquals(1000.0, wallet.getBalance()); // Constructor does not mutate wallet balance
     }
 
     @Test
@@ -61,9 +61,8 @@ public class WalletCreationWithTransactionTest {
         Category category = new Category("Groceries", TransactionType.EXPENSE);
         Expense expense = new Expense(2, 130.0, LocalDate.of(2026, 7, 20), "Freelance", category, wallet, "Cash");
         assertEquals(TransactionType.EXPENSE, expense.getType());
-        //assertEquals(-130.0, expense.getSignedAmount());
         assertEquals("Cash", expense.getPaymentMethod());
         assertEquals(wallet, expense.getWallet());
-        assertEquals(120.0, wallet.getBalance()); // Check if the wallet balance is updated after expense
+        assertEquals(250.0, wallet.getBalance()); // Constructor does not mutate wallet balance
     }
 }

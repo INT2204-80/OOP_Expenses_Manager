@@ -48,9 +48,17 @@ public class TransactionDAO implements ITransactionDAO {
 
     @Override
     public void saveTransaction(Transaction t, int walletId) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            saveTransaction(conn, t, walletId);
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error saving transaction", e);
+        }
+    }
+
+    @Override
+    public void saveTransaction(Connection conn, Transaction t, int walletId) throws SQLException {
         String insertSql = "INSERT INTO transactions (amount, date, note, category_id, wallet_id, transaction_type, source, payment_method, is_recurring, recurring_period, passed_periods, recurring_end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
              
             int categoryId = categoryDAO.getOrCreateCategoryId(
                     t.getCategory().getName(),
@@ -107,29 +115,40 @@ public class TransactionDAO implements ITransactionDAO {
                     t.setId(generatedKeys.getInt(1));
                 }
             }
-            
-        } catch (SQLException e) {
-            throw new RuntimeException("Database error saving transaction", e);
         }
     }
 
     @Override
     public void deleteTransaction(int transactionId) {
-        String deleteSql = "DELETE FROM transactions WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(deleteSql)) {
-            pstmt.setInt(1, transactionId);
-            pstmt.executeUpdate();
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            deleteTransaction(conn, transactionId);
         } catch (SQLException e) {
             throw new RuntimeException("Database error deleting transaction", e);
         }
     }
 
     @Override
+    public void deleteTransaction(Connection conn, int transactionId) throws SQLException {
+        String deleteSql = "DELETE FROM transactions WHERE id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(deleteSql)) {
+            pstmt.setInt(1, transactionId);
+            pstmt.executeUpdate();
+        }
+    }
+
+    @Override
     public void updateTransaction(Transaction t, int walletId) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            updateTransaction(conn, t, walletId);
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error updating transaction", e);
+        }
+    }
+
+    @Override
+    public void updateTransaction(Connection conn, Transaction t, int walletId) throws SQLException {
         String updateSql = "UPDATE transactions SET amount = ?, date = ?, note = ?, category_id = ?, transaction_type = ?, source = ?, payment_method = ?, is_recurring = ?, recurring_period = ?, passed_periods = ?, recurring_end_date = ?, wallet_id = ? WHERE id = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
              
             int categoryId = categoryDAO.getOrCreateCategoryId(
                     t.getCategory().getName(),
@@ -181,9 +200,6 @@ public class TransactionDAO implements ITransactionDAO {
             pstmt.setInt(13, t.getId());
             
             pstmt.executeUpdate();
-            
-        } catch (SQLException e) {
-            throw new RuntimeException("Database error updating transaction", e);
         }
     }
 

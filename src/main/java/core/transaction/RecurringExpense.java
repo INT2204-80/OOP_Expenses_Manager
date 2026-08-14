@@ -21,15 +21,20 @@ public class RecurringExpense extends Expense {
 
     public RecurringExpense(int id, double amount, LocalDate date, String note, Category category, Wallet wallet, String paymentMethod, Period period, LocalDate endDate) {
         super(id, amount, date, note, category, wallet, paymentMethod);
-        if (period == null) {
-            throw new IllegalArgumentException("Period cannot be null");
-        }
+        this.period = validatePeriod(period);
         if (endDate != null && date != null && endDate.isBefore(date)) {
             throw new IllegalArgumentException("Ngay ket thuc khong the truoc ngay bat dau");
         }
-        this.period = period;
         this.endDate = endDate;
         this.currentDueDate = date.plus(period);
+    }
+
+    private static Period validatePeriod(Period period) {
+        if (period == null || period.isZero() || period.isNegative()) {
+            throw new IllegalArgumentException(
+                    "Recurring period must be positive");
+        }
+        return period;
     }
 
     /**
@@ -107,6 +112,10 @@ public class RecurringExpense extends Expense {
     }
 
     public void setPassedPeriods(int passedPeriods) {
+        if (passedPeriods < 0) {
+            throw new IllegalArgumentException(
+                    "Passed periods cannot be negative");
+        }
         this.passedPeriods = passedPeriods;
     }
 
@@ -128,10 +137,7 @@ public class RecurringExpense extends Expense {
      */
     
     public void setPeriod(Period period) {
-        if (period == null) {
-            throw new IllegalArgumentException("Period cannot be null");
-        }
-        this.period = period;
+        this.period = validatePeriod(period);
     }
 
     public LocalDate getEndDate() {

@@ -109,7 +109,7 @@ class CsvStorageTest {
                 loadedIncome.getWallet());
         assertEquals("Vi Momo", loadedEWallet.getName());
         assertEquals("Momo", loadedEWallet.getProvider());
-        assertEquals(1_400, loadedEWallet.getBalance(), DELTA);
+        assertEquals(1_000, loadedEWallet.getBalance(), DELTA);
 
         Expense loadedExpense = assertInstanceOf(
                 Expense.class,
@@ -117,7 +117,7 @@ class CsvStorageTest {
         assertEquals("Cash", loadedExpense.getPaymentMethod());
         assertEquals("An uong", loadedExpense.getCategory().getName());
         assertEquals(
-                850,
+                1_000,
                 loadedExpense.getWallet().getBalance(),
                 DELTA);
 
@@ -135,7 +135,7 @@ class CsvStorageTest {
                 loadedRecurring.getWallet());
         assertEquals("VCB", loadedBankAccount.getBankName());
         assertEquals("123456", loadedBankAccount.getAccountNumber());
-        assertEquals(4_000, loadedBankAccount.getBalance(), DELTA);
+        assertEquals(5_000, loadedBankAccount.getBalance(), DELTA);
     }
 
     /**
@@ -182,7 +182,7 @@ class CsvStorageTest {
         assertEquals("Mua, \"do\"", loadedExpense.getNote());
         assertSame(loadedIncome.getWallet(), loadedExpense.getWallet());
         assertEquals(
-                1_100,
+                1_000,
                 loadedIncome.getWallet().getBalance(),
                 DELTA);
     }

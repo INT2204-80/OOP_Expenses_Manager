@@ -200,10 +200,11 @@ public class WalletTransactionManager {
             return;
         }
 
-        double neededForBackfill = re.getAmount() * passed;
-        if (neededForBackfill > currentWallet.getBalance()) {
-            currentWallet.deposit(re.getAmount()); // hoan tac khoan da tru trong constructor
-            showError("Số dư ví không đủ để tạo " + passed + " giao dịch cho các chu kỳ đã qua!");
+        int totalOccurrences = passed + 1;
+        double totalRequired = re.getAmount() * totalOccurrences;
+        
+        if (!Double.isFinite(totalRequired) || totalRequired > currentWallet.getBalance()) {
+            showError("Số dư ví không đủ để tạo " + totalOccurrences + " giao dịch!");
             return;
         }
 
@@ -218,8 +219,6 @@ public class WalletTransactionManager {
         if (confirmResult.isPresent() && confirmResult.get() == ButtonType.YES) {
             transactionService.addRecurringExpenseWithBackfill(re, currentWallet);
             refreshCallback.run();
-        } else {
-            currentWallet.deposit(re.getAmount()); // hoan tac khoan da tru trong constructor, huy toan bo
         }
     }
 
