@@ -1,2 +1,12 @@
-target/
-build/
+/target/
+/.idea/
+*.iml
+/.classpath
+/.project
+/.settings/
+/bin/
+*.class
+*.log
+database.db
+database.db-journal
+test_data.csv

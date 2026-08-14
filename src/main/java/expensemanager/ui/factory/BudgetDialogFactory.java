@@ -105,7 +105,9 @@ public class BudgetDialogFactory {
 
         ComboBox<String> categoryBox = new ComboBox<>();
         categoryBox.getItems().add("All categories");
-        availableCategories.forEach(c -> categoryBox.getItems().add(c.getName()));
+        availableCategories.stream()
+                .filter(c -> c.getType() == TransactionType.EXPENSE)
+                .forEach(c -> categoryBox.getItems().add(c.getName()));
         categoryBox.getSelectionModel().selectFirst();
         categoryBox.setMaxWidth(Double.MAX_VALUE);
 

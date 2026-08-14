@@ -11,7 +11,6 @@ public class Income extends Transaction {
 
     public Income(int id, double amount, LocalDate date, String note, Category category, Wallet wallet, String source) {
         super(id, amount, date, note, category, wallet);
-        wallet.deposit(validateAmount(amount)); // Validate the amount before setting it
         this.source = source;
     }
 

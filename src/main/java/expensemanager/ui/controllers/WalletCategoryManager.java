@@ -157,6 +157,13 @@ public class WalletCategoryManager {
             List<Category> sources = new ArrayList<>(selectedCategories);
             sources.remove(target);
 
+            if (sources.stream().anyMatch(s -> s.getType() != target.getType())) {
+                Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+                errorAlert.setHeaderText("Không thể gộp danh mục INCOME và EXPENSE với nhau!");
+                errorAlert.showAndWait();
+                return;
+            }
+
             try {
                 categoryService.mergeCategories(sources, target);
                 selectedCategories.clear();

@@ -50,7 +50,7 @@ public class WalletDAO implements IWalletDAO {
             }
 
         } catch (SQLException e) {
-            System.err.println("Error fetching wallets: " + e.getMessage());
+            throw new RuntimeException("Database error fetching wallets", e);
         }
 
         return wallets;
@@ -86,7 +86,7 @@ public class WalletDAO implements IWalletDAO {
             pstmt.executeUpdate();
 
         } catch (SQLException e) {
-            System.err.println("Error adding wallet: " + e.getMessage());
+            throw new RuntimeException("Database error adding wallet", e);
         }
     }
     public void updateWallet(int walletId, String newName, double newBalance, String newCurrency) {
@@ -101,7 +101,7 @@ public class WalletDAO implements IWalletDAO {
             pstmt.executeUpdate();
             
         } catch (SQLException e) {
-            System.err.println("Error updating wallet: " + e.getMessage());
+            throw new RuntimeException("Database error updating wallet", e);
         }
     }
 
@@ -115,7 +115,7 @@ public class WalletDAO implements IWalletDAO {
             pstmt.executeUpdate();
             
         } catch (SQLException e) {
-            System.err.println("Error updating wallet balance: " + e.getMessage());
+            throw new RuntimeException("Database error updating wallet balance", e);
         }
     }
 
@@ -128,22 +128,27 @@ public class WalletDAO implements IWalletDAO {
             pstmt.setInt(3, wallet.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error updating wallet: " + e.getMessage());
+            throw new RuntimeException("Database error updating wallet", e);
         }
     }
 
     public void deleteWallet(int walletId) {
-        // Also delete associated transactions to avoid orphans
+        // Also delete associated budgets and transactions to avoid orphans
+        String deleteBudgetSql = "DELETE FROM budgets WHERE wallet_id = ?";
         String deleteTxSql = "DELETE FROM transactions WHERE wallet_id = ?";
         String deleteWalletSql = "DELETE FROM wallets WHERE id = ?";
         
         try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt0 = conn.prepareStatement(deleteBudgetSql);
              PreparedStatement pstmt1 = conn.prepareStatement(deleteTxSql);
              PreparedStatement pstmt2 = conn.prepareStatement(deleteWalletSql)) {
              
             // Start transaction
             conn.setAutoCommit(false);
             
+            pstmt0.setInt(1, walletId);
+            pstmt0.executeUpdate();
+
             pstmt1.setInt(1, walletId);
             pstmt1.executeUpdate();
             
@@ -154,7 +159,7 @@ public class WalletDAO implements IWalletDAO {
             conn.setAutoCommit(true);
             
         } catch (SQLException e) {
-            System.err.println("Error deleting wallet: " + e.getMessage());
+            throw new RuntimeException("Database error deleting wallet", e);
         }
     }
 }

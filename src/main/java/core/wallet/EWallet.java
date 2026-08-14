@@ -62,6 +62,10 @@ public class EWallet extends Wallet {
      * @throws IllegalArgumentException neu so tien khong duong, NaN hoac vo cuc
      * @throws IllegalStateException neu so du khong du
      */
+    @Override
+    public void withdraw(double amount) {
+        super.withdraw(amount);
+    }
 
     /**
      * Lay loai vi dien tu.

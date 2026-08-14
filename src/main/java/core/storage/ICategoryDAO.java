@@ -12,4 +12,5 @@ public interface ICategoryDAO {
     void mergeCategories(List<Category> sources, Category target) throws SQLException;
     void updateCategory(String oldName, String oldType, String newName, String newType, String newIcon, String newColor) throws SQLException;
     void softDeleteCategory(String name, String type) throws SQLException;
+    Category getCategoryById(int id) throws SQLException;
 }

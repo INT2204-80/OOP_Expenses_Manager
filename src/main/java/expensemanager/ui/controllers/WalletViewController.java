@@ -374,8 +374,9 @@ public class WalletViewController {
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.YES) {
             
-            // TODO: Gọi hàm xóa Ví khỏi Database/Danh sách ví của bạn ở đây
-            // ví dụ: walletService.deleteWallet(currentWallet);
+            if (currentWallet != null) {
+                walletDAO.deleteWallet(currentWallet.getId());
+            }
 
             // 4. Xóa thành công -> Quay trở lại màn hình Dashboard
             try {
@@ -404,6 +405,10 @@ public class WalletViewController {
 
         try {
             double initialBalance = Double.parseDouble(initialBalanceStr);
+            if (initialBalance < 0) {
+                showAlert(Alert.AlertType.ERROR, "Lỗi", "Số dư ban đầu không được âm!");
+                return;
+            }
 
             if (currentWallet == null) {
                 showAlert(Alert.AlertType.ERROR, "Lỗi", "Không có ví để cập nhật.");
@@ -412,7 +417,8 @@ public class WalletViewController {
 
             currentWallet.setName(newName);
             currentWallet.setBalance(initialBalance);
-            walletDAO.updateWallet(currentWallet);
+            currentWallet.setCurrency(currency);
+            walletDAO.updateWallet(currentWallet.getId(), newName, initialBalance, currency);
 
             if (walletNameTopLabel != null) {
                 walletNameTopLabel.setText(newName);

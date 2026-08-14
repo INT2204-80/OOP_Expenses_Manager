@@ -43,17 +43,22 @@ public class CsvStorage implements Storage {
             "note",
             "categoryName",
             "categoryType",
+            "categoryIcon",
+            "categoryColor",
             "walletType",
             "walletName",
             "walletBalance",
+            "currency",
             "bankName",
             "accountNumber",
             "provider",
             "source",
             "paymentMethod",
-            "period");
+            "period",
+            "passedPeriods",
+            "recurringEndDate");
 
-    private static final int COLUMN_COUNT = 16;
+    private static final int COLUMN_COUNT = 21;
 
     /**
      * Luu danh sach giao dich xuong file CSV bang UTF-8.
@@ -124,7 +129,11 @@ public class CsvStorage implements Storage {
             if (header == null) {
                 return transactions;
             }
-            if (!HEADER.equals(header)) {
+            // Allow legacy 16-column header
+            int expectedCols = COLUMN_COUNT;
+            if (header.split(",").length == 16) {
+                expectedCols = 16;
+            } else if (!HEADER.equals(header)) {
                 throw new IOException("Invalid CSV header");
             }
 
@@ -138,7 +147,8 @@ public class CsvStorage implements Storage {
                 transactions.add(fromCsvLine(
                         line,
                         lineNumber,
-                        loadedWallets));
+                        loadedWallets,
+                        expectedCols));
             }
         }
 
@@ -159,6 +169,8 @@ public class CsvStorage implements Storage {
         String source = "";
         String paymentMethod = "";
         String period = "";
+        String passedPeriods = "0";
+        String recurringEndDate = "";
 
         if (transaction instanceof RecurringExpense recurringExpense) {
             recordType = "RECURRING_EXPENSE";
@@ -168,6 +180,10 @@ public class CsvStorage implements Storage {
                         "Recurring expense period cannot be null");
             }
             period = recurringExpense.getPeriod().toString();
+            passedPeriods = Integer.toString(recurringExpense.getPassedPeriods());
+            if (recurringExpense.getEndDate() != null) {
+                recurringEndDate = recurringExpense.getEndDate().toString();
+            }
         } else if (transaction instanceof Income income) {
             recordType = "INCOME";
             source = text(income.getSource());
@@ -202,15 +218,20 @@ public class CsvStorage implements Storage {
                 text(transaction.getNote()),
                 category.getName(),
                 category.getType().name(),
+                text(category.getIcon()),
+                text(category.getColor()),
                 wallet.getWalletType().name(),
                 text(wallet.getName()),
                 Double.toString(wallet.getBalance()),
+                text(wallet.getCurrency()),
                 bankName,
                 accountNumber,
                 provider,
                 source,
                 paymentMethod,
-                period);
+                period,
+                passedPeriods,
+                recurringEndDate);
 
         StringJoiner result = new StringJoiner(",");
         for (String value : values) {
@@ -222,12 +243,13 @@ public class CsvStorage implements Storage {
     private Transaction fromCsvLine(
             String line,
             int lineNumber,
-            Map<String, Wallet> loadedWallets) throws IOException {
+            Map<String, Wallet> loadedWallets,
+            int expectedCols) throws IOException {
         try {
             List<String> columns = parseLine(line);
-            if (columns.size() != COLUMN_COUNT) {
+            if (columns.size() != expectedCols) {
                 throw new IllegalArgumentException(
-                        "Expected 16 columns but got " + columns.size());
+                        "Expected " + expectedCols + " columns but got " + columns.size());
             }
 
             String recordType = columns.get(0);
@@ -238,15 +260,49 @@ public class CsvStorage implements Storage {
             String categoryName = columns.get(5);
             TransactionType categoryType = TransactionType.valueOf(
                     columns.get(6));
-            WalletType walletType = WalletType.valueOf(columns.get(7));
-            String walletName = columns.get(8);
-            double walletBalance = Double.parseDouble(columns.get(9));
-            String bankName = columns.get(10);
-            String accountNumber = columns.get(11);
-            String provider = columns.get(12);
-            String source = columns.get(13);
-            String paymentMethod = columns.get(14);
-            String periodText = columns.get(15);
+                    
+            String categoryIcon = "";
+            String categoryColor = "";
+            WalletType walletType;
+            String walletName;
+            double walletBalance;
+            String currency = "VND";
+            String bankName;
+            String accountNumber;
+            String provider;
+            String source;
+            String paymentMethod;
+            String periodText;
+            int passedPeriods = 0;
+            String recurringEndDateStr = "";
+
+            if (expectedCols == 16) {
+                walletType = WalletType.valueOf(columns.get(7));
+                walletName = columns.get(8);
+                walletBalance = Double.parseDouble(columns.get(9));
+                bankName = columns.get(10);
+                accountNumber = columns.get(11);
+                provider = columns.get(12);
+                source = columns.get(13);
+                paymentMethod = columns.get(14);
+                periodText = columns.get(15);
+            } else {
+                categoryIcon = columns.get(7);
+                categoryColor = columns.get(8);
+                walletType = WalletType.valueOf(columns.get(9));
+                walletName = columns.get(10);
+                walletBalance = Double.parseDouble(columns.get(11));
+                currency = columns.get(12);
+                if (currency.isBlank()) currency = "VND";
+                bankName = columns.get(13);
+                accountNumber = columns.get(14);
+                provider = columns.get(15);
+                source = columns.get(16);
+                paymentMethod = columns.get(17);
+                periodText = columns.get(18);
+                passedPeriods = columns.get(19).isBlank() ? 0 : Integer.parseInt(columns.get(19));
+                recurringEndDateStr = columns.get(20);
+            }
 
             if (id < 0) {
                 throw new IllegalArgumentException("ID cannot be negative");
@@ -255,7 +311,7 @@ public class CsvStorage implements Storage {
             Wallet.validateAmount(walletBalance);
             validateRecordType(recordType, categoryType);
 
-            Category category = new Category(categoryName, categoryType);
+            Category category = new Category(categoryName, categoryType, categoryIcon, categoryColor);
             String walletKey = walletKey(
                     walletType,
                     walletName,
@@ -267,6 +323,7 @@ public class CsvStorage implements Storage {
                         walletType,
                         walletName,
                         walletBalance,
+                        currency,
                         bankName,
                         accountNumber,
                         provider);
@@ -287,7 +344,9 @@ public class CsvStorage implements Storage {
                     wallet,
                     source,
                     paymentMethod,
-                    periodText);
+                    periodText,
+                    passedPeriods,
+                    recurringEndDateStr);
         } catch (IllegalArgumentException exception) {
             throw new IOException(
                     "Invalid CSV data at line " + lineNumber,
@@ -305,11 +364,9 @@ public class CsvStorage implements Storage {
             Wallet realWallet,
             String source,
             String paymentMethod,
-            String periodText) {
-        double temporaryBalance = "INCOME".equals(recordType)
-                ? 0
-                : amount;
-        Wallet temporaryWallet = new TemporaryWallet(temporaryBalance);
+            String periodText,
+            int passedPeriods,
+            String recurringEndDateStr) {
 
         Transaction transaction = switch (recordType) {
             case "INCOME" -> new Income(
@@ -318,7 +375,7 @@ public class CsvStorage implements Storage {
                     date,
                     note,
                     category,
-                    temporaryWallet,
+                    realWallet,
                     source);
             case "EXPENSE" -> new Expense(
                     id,
@@ -326,28 +383,31 @@ public class CsvStorage implements Storage {
                     date,
                     note,
                     category,
-                    temporaryWallet,
+                    realWallet,
                     paymentMethod);
             case "RECURRING_EXPENSE" -> {
                 if (periodText.isBlank()) {
                     throw new IllegalArgumentException(
                             "Recurring period cannot be empty");
                 }
-                yield new RecurringExpense(
+                LocalDate endDate = recurringEndDateStr.isBlank() ? null : LocalDate.parse(recurringEndDateStr);
+                RecurringExpense re = new RecurringExpense(
                         id,
                         amount,
                         date,
                         note,
                         category,
-                        temporaryWallet,
+                        realWallet,
                         paymentMethod,
-                        Period.parse(periodText));
+                        Period.parse(periodText),
+                        endDate);
+                re.setPassedPeriods(passedPeriods);
+                yield re;
             }
             default -> throw new IllegalArgumentException(
                     "Unsupported transaction type: " + recordType);
         };
 
-        transaction.setWallet(realWallet);
         return transaction;
     }
 
@@ -355,17 +415,19 @@ public class CsvStorage implements Storage {
             WalletType walletType,
             String name,
             double balance,
+            String currency,
             String bankName,
             String accountNumber,
             String provider) {
         return switch (walletType) {
-            case CASH -> new CashWallet(name, balance);
+            case CASH -> new CashWallet(name, balance, currency);
             case BANK -> new BankAccount(
                     name,
                     balance,
+                    currency,
                     bankName,
                     accountNumber);
-            case EWALLET -> new EWallet(name, balance, provider);
+            case EWALLET -> new EWallet(name, balance, currency, provider);
         };
     }
 
@@ -461,26 +523,5 @@ public class CsvStorage implements Storage {
 
     private String text(String value) {
         return value == null ? "" : value;
-    }
-
-    /**
-     * Vi tam dung de khoi phuc giao dich ma khong doi so du vi that.
-     */
-    private static final class TemporaryWallet extends CashWallet {
-        private TemporaryWallet(double balance) {
-            super("CSV temporary wallet", balance);
-        }
-
-        @Override
-        public void withdraw(double amount) {
-            if (!Double.isFinite(amount) || amount < 0) {
-                throw new IllegalArgumentException(
-                        "Withdrawal amount cannot be negative, NaN or infinite");
-            }
-            if (amount > getBalance()) {
-                throw new IllegalStateException("Insufficient balance");
-            }
-            setBalance(getBalance() - amount);
-        }
     }
 }

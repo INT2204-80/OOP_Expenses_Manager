@@ -39,15 +39,21 @@ public class RecurringExpense extends Expense {
      */
 
     public LocalDate nextDueDate() {
-        LocalDate today = LocalDate.now();
+        return nextDueDate(LocalDate.now());
+    }
 
+    public LocalDate nextDueDate(LocalDate referenceDate) {
         currentDueDate = getDate().plus(
                 period.multipliedBy(passedPeriods + 1));
 
-        while (!currentDueDate.isAfter(today) && (endDate == null || !currentDueDate.isAfter(endDate))) {
+        while (!currentDueDate.isAfter(referenceDate) && (endDate == null || !currentDueDate.isAfter(endDate))) {
             passedPeriods++;
             currentDueDate = getDate().plus(
                     period.multipliedBy(passedPeriods + 1));
+        }
+
+        if (endDate != null && currentDueDate.isAfter(endDate)) {
+            return null;
         }
 
         return currentDueDate;

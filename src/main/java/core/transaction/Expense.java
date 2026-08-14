@@ -11,14 +11,9 @@ public class Expense extends Transaction {
 
     public Expense(int id, double amount, LocalDate date, String note, Category category, Wallet wallet, String paymentMethod) {
         super(id, validateAmount(amount), date, note, category, wallet);
-        double validatedAmount = validateAmount(amount);
         if (wallet == null) {
             throw new IllegalArgumentException("Wallet cannot be null");
         }
-        if (validatedAmount > wallet.getBalance()) {
-            throw new IllegalArgumentException("Expense amount cannot exceed wallet balance");
-        }
-        wallet.withdraw(validatedAmount);
         this.paymentMethod = paymentMethod;
     }
 

@@ -120,8 +120,19 @@ public class TransactionDialogFactory {
         okBtn.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
             try {
                 double amt = Double.parseDouble(amountField.getText().replaceAll(",", ""));
-                if (amt <= 0) {
-                    showError("Số tiền phải lớn hơn 0!");
+                if (amt <= 0 || !Double.isFinite(amt)) {
+                    showError("Số tiền phải lớn hơn 0 và hợp lệ!");
+                    event.consume();
+                    return;
+                }
+                
+                if (datePicker.getValue() == null) {
+                    showError("Ngày không được để trống!");
+                    event.consume();
+                    return;
+                }
+                if (categoryCombo.getValue() == null) {
+                    showError("Danh mục không được để trống!");
                     event.consume();
                     return;
                 }
@@ -170,7 +181,7 @@ public class TransactionDialogFactory {
                         .findFirst()
                         .orElse(new Category(catName, TransactionType.EXPENSE));
 
-                int id = oldT != null ? oldT.getId() : (int)(Math.random() * 10000);
+                int id = oldT != null ? oldT.getId() : 0;
 
                 if (cat.getType() == TransactionType.INCOME) {
                     return new Income(id, amount, date, note, cat, wallet, catName);

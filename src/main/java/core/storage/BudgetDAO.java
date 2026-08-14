@@ -12,31 +12,13 @@ import java.util.List;
 
 public class BudgetDAO implements IBudgetDAO {
 
-    static {
-        // Automatically create the budgets table if it doesn't exist
-        String createTableSql = "CREATE TABLE IF NOT EXISTS budgets (" +
-                "id INT AUTO_INCREMENT PRIMARY KEY," +
-                "name VARCHAR(255) NOT NULL," +
-                "limit_amount DOUBLE NOT NULL," +
-                "current_spent DOUBLE DEFAULT 0.0," +
-                "category_name VARCHAR(255)," +
-                "period VARCHAR(50) NOT NULL," +
-                "start_date DATE NOT NULL," +
-                "end_date DATE," +
-                "wallet_id INT" +
-                ")";
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-            stmt.execute(createTableSql);
-            // Ensure wallet_id column exists if table was already created
-            try { stmt.executeUpdate("ALTER TABLE budgets ADD COLUMN wallet_id INT"); } catch (SQLException e) {}
-        } catch (SQLException e) {
-            System.err.println("Error initializing budgets table: " + e.getMessage());
-        }
+    private final ICategoryDAO categoryDAO = new CategoryDAO();
+
+    public BudgetDAO() {
     }
 
     public void addBudget(Budget budget, int walletId) {
-        String sql = "INSERT INTO budgets (name, limit_amount, current_spent, category_name, period, start_date, end_date, wallet_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO budgets (name, limit_amount, current_spent, category_id, period, start_date, end_date, wallet_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
@@ -44,9 +26,14 @@ public class BudgetDAO implements IBudgetDAO {
             pstmt.setDouble(2, budget.getLimitAmount());
             pstmt.setDouble(3, budget.getCurrentSpent());
             if (budget.getCategory() != null) {
-                pstmt.setString(4, budget.getCategory().getName());
+                int catId = categoryDAO.getCategoryId(budget.getCategory().getName(), budget.getCategory().getType().name());
+                if (catId != -1) {
+                    pstmt.setInt(4, catId);
+                } else {
+                    pstmt.setNull(4, Types.INTEGER);
+                }
             } else {
-                pstmt.setNull(4, Types.VARCHAR);
+                pstmt.setNull(4, Types.INTEGER);
             }
             pstmt.setString(5, budget.getPeriod().name());
             pstmt.setDate(6, Date.valueOf(budget.getStartDate()));
@@ -65,12 +52,12 @@ public class BudgetDAO implements IBudgetDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error adding budget: " + e.getMessage());
+            throw new RuntimeException("Database error adding budget", e);
         }
     }
 
     public void updateBudget(Budget budget) {
-        String sql = "UPDATE budgets SET name = ?, limit_amount = ?, current_spent = ?, category_name = ?, period = ?, start_date = ?, end_date = ? WHERE id = ?";
+        String sql = "UPDATE budgets SET name = ?, limit_amount = ?, current_spent = ?, category_id = ?, period = ?, start_date = ?, end_date = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             
@@ -78,9 +65,14 @@ public class BudgetDAO implements IBudgetDAO {
             pstmt.setDouble(2, budget.getLimitAmount());
             pstmt.setDouble(3, budget.getCurrentSpent());
             if (budget.getCategory() != null) {
-                pstmt.setString(4, budget.getCategory().getName());
+                int catId = categoryDAO.getCategoryId(budget.getCategory().getName(), budget.getCategory().getType().name());
+                if (catId != -1) {
+                    pstmt.setInt(4, catId);
+                } else {
+                    pstmt.setNull(4, Types.INTEGER);
+                }
             } else {
-                pstmt.setNull(4, Types.VARCHAR);
+                pstmt.setNull(4, Types.INTEGER);
             }
             pstmt.setString(5, budget.getPeriod().name());
             pstmt.setDate(6, Date.valueOf(budget.getStartDate()));
@@ -93,7 +85,7 @@ public class BudgetDAO implements IBudgetDAO {
 
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error updating budget: " + e.getMessage());
+            throw new RuntimeException("Database error updating budget", e);
         }
     }
 
@@ -104,7 +96,7 @@ public class BudgetDAO implements IBudgetDAO {
             pstmt.setInt(1, budgetId);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error deleting budget: " + e.getMessage());
+            throw new RuntimeException("Database error deleting budget", e);
         }
     }
 
@@ -134,15 +126,16 @@ public class BudgetDAO implements IBudgetDAO {
                     String name = rs.getString("name");
                     double limitAmount = rs.getDouble("limit_amount");
                     double currentSpent = rs.getDouble("current_spent");
-                    String categoryName = rs.getString("category_name");
+                    int categoryId = rs.getInt("category_id");
+                    boolean hasCategory = !rs.wasNull();
                     String periodStr = rs.getString("period");
                     LocalDate startDate = rs.getDate("start_date").toLocalDate();
                     Date endDateDb = rs.getDate("end_date");
                     LocalDate endDate = (endDateDb != null) ? endDateDb.toLocalDate() : null;
 
                     Category category = null;
-                    if (categoryName != null) {
-                        category = new Category(categoryName, TransactionType.EXPENSE);
+                    if (hasCategory) {
+                        category = categoryDAO.getCategoryById(categoryId);
                     }
 
                     Period period = Period.valueOf(periodStr);
@@ -152,7 +145,7 @@ public class BudgetDAO implements IBudgetDAO {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving budgets: " + e.getMessage());
+            throw new RuntimeException("Database error retrieving budgets", e);
         }
         return budgets;
     }

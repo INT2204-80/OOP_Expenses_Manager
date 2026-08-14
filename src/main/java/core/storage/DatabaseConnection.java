@@ -10,13 +10,35 @@ public class DatabaseConnection {
     private static final String PASSWORD = "";
     
     static {
-        // Run migration to add currency if missing
+        // Run migration to add new columns if missing
         try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
              java.sql.Statement stmt = conn.createStatement()) {
-            stmt.execute("ALTER TABLE wallets ADD COLUMN currency VARCHAR(10) DEFAULT 'VND'");
-            System.out.println("Migrated DB: Added currency column to wallets.");
+            
+            // wallets
+            try { stmt.execute("ALTER TABLE wallets ADD COLUMN currency VARCHAR(10) DEFAULT 'VND'"); } catch (Exception e) {}
+            
+            // categories
+            try { stmt.execute("ALTER TABLE categories ADD COLUMN icon VARCHAR(255)"); } catch (Exception e) {}
+            try { stmt.execute("ALTER TABLE categories ADD COLUMN color VARCHAR(255)"); } catch (Exception e) {}
+            try { stmt.execute("ALTER TABLE categories ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"); } catch (Exception e) {}
+
+            // transactions
+            try { stmt.execute("ALTER TABLE transactions ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE"); } catch (Exception e) {}
+            try { stmt.execute("ALTER TABLE transactions ADD COLUMN recurring_period VARCHAR(50)"); } catch (Exception e) {}
+            try { stmt.execute("ALTER TABLE transactions ADD COLUMN passed_periods INT DEFAULT 0"); } catch (Exception e) {}
+            try { stmt.execute("ALTER TABLE transactions ADD COLUMN recurring_end_date DATE"); } catch (Exception e) {}
+
+            // budgets
+            try { stmt.execute("ALTER TABLE budgets ADD COLUMN category_id INT"); } catch (Exception e) {}
+            // Migrate category_name to category_id
+            try {
+                stmt.execute("UPDATE budgets b JOIN categories c ON b.category_name = c.name SET b.category_id = c.id WHERE b.category_id IS NULL AND b.category_name IS NOT NULL");
+            } catch (Exception e) {}
+            try { stmt.execute("ALTER TABLE budgets DROP COLUMN category_name"); } catch (Exception e) {}
+            
+            System.out.println("Migrated DB: Schema updated.");
         } catch (Exception e) {
-            // Probably already exists
+            System.err.println("Database migration failed: " + e.getMessage());
         }
     }
     

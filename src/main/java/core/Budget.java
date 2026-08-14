@@ -51,10 +51,18 @@ public class Budget {
      * Khoi tao ngan sach theo chu ky (Period) tu dong tinh endDate
      */
     public Budget(int id, String name, double limitAmount, Category category, Period period, LocalDate startDate) {
-        this(id, name, limitAmount, category, startDate, 
-            (startDate != null && period != null) ? startDate.plus(period.toJavaPeriod()).minusDays(1) : null);
-
+        this(id, name, limitAmount, category, startDate, calculateEndDate(startDate, period));
         this.period = period;
+    }
+
+    private static LocalDate calculateEndDate(LocalDate startDate, Period period) {
+        if (startDate == null || period == null) {
+            return null;
+        }
+        if (period == Period.ONCE) {
+            return startDate;
+        }
+        return startDate.plus(period.toJavaPeriod()).minusDays(1);
     }
 
     /**

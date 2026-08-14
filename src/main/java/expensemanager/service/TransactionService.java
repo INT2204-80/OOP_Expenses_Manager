@@ -27,12 +27,14 @@ public class TransactionService {
      */
     public List<Transaction> getTransactionsByWallet(Wallet wallet) {
         List<Transaction> transactions = transactionDAO.getTransactionsByWallet(wallet);
-        processRecurringExpenses(transactions, wallet.getId());
+        processRecurringExpenses(transactions, wallet);
         return transactions;
     }
 
-    private void processRecurringExpenses(List<Transaction> transactions, int walletId) {
+    private void processRecurringExpenses(List<Transaction> transactions, Wallet wallet) {
         List<Transaction> newExpenses = new ArrayList<>();
+        boolean hasUpdates = false;
+
         for (Transaction t : transactions) {
             if (t instanceof RecurringExpense) {
                 RecurringExpense re = (RecurringExpense) t;
@@ -44,18 +46,40 @@ public class TransactionService {
                     for (int i = oldPassed + 1; i <= newPassed; i++) {
                         LocalDate generatedDate = re.getDate().plus(re.getPeriod().multipliedBy(i));
                         Expense newExpense = new Expense(0, re.getAmount(), generatedDate, 
-                            re.getNote() + " (Auto-generated)", re.getCategory(), re.getWallet(), re.getPaymentMethod());
+                            re.getNote() + " (Auto-generated)", re.getCategory(), wallet, re.getPaymentMethod());
                         newExpenses.add(newExpense);
+                        applyToWallet(newExpense, wallet);
                     }
                     // Update the RecurringExpense in DB
-                    transactionDAO.updateTransaction(re, walletId);
+                    transactionDAO.updateTransaction(re, wallet.getId());
+                    hasUpdates = true;
                 }
             }
         }
         
         for (Transaction newExp : newExpenses) {
-            transactionDAO.saveTransaction(newExp, walletId);
+            transactionDAO.saveTransaction(newExp, wallet.getId());
             transactions.add(newExp);
+        }
+
+        if (hasUpdates) {
+            walletDAO.updateBalance(wallet.getId(), wallet.getBalance());
+        }
+    }
+
+    private void applyToWallet(Transaction t, Wallet wallet) {
+        if (t instanceof Income) {
+            wallet.deposit(t.getAmount());
+        } else {
+            wallet.withdraw(t.getAmount());
+        }
+    }
+
+    private void revertFromWallet(Transaction t, Wallet wallet) {
+        if (t instanceof Income) {
+            wallet.withdraw(t.getAmount());
+        } else {
+            wallet.deposit(t.getAmount());
         }
     }
 
@@ -63,6 +87,7 @@ public class TransactionService {
      * Thêm giao dịch mới, tự động cập nhật số dư ví và lưu Database
      */
     public void addTransactionAndUpdateWallet(Transaction t, Wallet wallet) {
+        applyToWallet(t, wallet);
         wallet.addTransaction(t); 
         transactionDAO.saveTransaction(t, wallet.getId());
         walletDAO.updateBalance(wallet.getId(), wallet.getBalance());
@@ -74,6 +99,7 @@ public class TransactionService {
     public void addRecurringExpenseWithBackfill(RecurringExpense re, Wallet wallet) {
         int passed = re.getPassedPeriods();
 
+        applyToWallet(re, wallet);
         wallet.addTransaction(re);
         transactionDAO.saveTransaction(re, wallet.getId());
 
@@ -81,6 +107,7 @@ public class TransactionService {
             LocalDate generatedDate = re.getDate().plus(re.getPeriod().multipliedBy(i));
             Expense backfillExpense = new Expense(0, re.getAmount(), generatedDate,
                     re.getNote() + " (Auto-generated)", re.getCategory(), wallet, re.getPaymentMethod());
+            applyToWallet(backfillExpense, wallet);
             wallet.addTransaction(backfillExpense);
             transactionDAO.saveTransaction(backfillExpense, wallet.getId());
         }
@@ -96,13 +123,10 @@ public class TransactionService {
             ((RecurringExpense) newT).setPassedPeriods(((RecurringExpense) oldT).getPassedPeriods());
         }
 
-        if (oldT instanceof Income) {
-            wallet.withdraw(oldT.getAmount());
-        } else {
-            wallet.deposit(oldT.getAmount());
-        }
+        revertFromWallet(oldT, wallet);
         wallet.getTransactions().remove(oldT);
         
+        applyToWallet(newT, wallet);
         wallet.getTransactions().add(newT);
 
         transactionDAO.updateTransaction(newT, wallet.getId());
@@ -115,11 +139,7 @@ public class TransactionService {
     public void deleteTransactionAndUpdateWallet(Transaction t, Wallet wallet) {
         transactionDAO.deleteTransaction(t.getId());
 
-        if (t instanceof Income) {
-            wallet.withdraw(t.getAmount());
-        } else {
-            wallet.deposit(t.getAmount());
-        }
+        revertFromWallet(t, wallet);
         
         wallet.getTransactions().remove(t);
         walletDAO.updateBalance(wallet.getId(), wallet.getBalance());

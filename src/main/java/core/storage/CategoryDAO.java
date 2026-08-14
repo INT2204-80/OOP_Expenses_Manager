@@ -14,18 +14,6 @@ import java.util.List;
 public class CategoryDAO implements ICategoryDAO {
 
     public CategoryDAO() {
-        ensureSchemaColumns();
-    }
-
-    private void ensureSchemaColumns() {
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE"); } catch (SQLException e) {}
-            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN icon VARCHAR(255)"); } catch (SQLException e) {}
-            try { stmt.executeUpdate("ALTER TABLE categories ADD COLUMN color VARCHAR(255)"); } catch (SQLException e) {}
-        } catch (SQLException e) {
-            System.err.println("Warning: could not ensure categories schema columns: " + e.getMessage());
-        }
     }
 
     @Override
@@ -74,8 +62,6 @@ public class CategoryDAO implements ICategoryDAO {
 
     @Override
     public List<Category> getAllCategories() {
-        ensureSchemaColumns();
-
         List<Category> categories = new ArrayList<>();
         String selectSql = "SELECT * FROM categories WHERE is_deleted = FALSE OR is_deleted IS NULL";
         try (Connection conn = DatabaseConnection.getConnection();
@@ -89,7 +75,7 @@ public class CategoryDAO implements ICategoryDAO {
                 categories.add(new Category(name, TransactionType.valueOf(typeStr), icon, color));
             }
         } catch (SQLException e) {
-            System.err.println("Error fetching categories: " + e.getMessage());
+            throw new RuntimeException("Database error fetching categories", e);
         }
         
         // Seed default categories if none exist and no error occurred
@@ -115,7 +101,7 @@ public class CategoryDAO implements ICategoryDAO {
                     }
                 }
             } catch (SQLException e) {
-                System.err.println("Error seeding categories: " + e.getMessage());
+                throw new RuntimeException("Database error seeding categories", e);
             }
         }
 
@@ -136,6 +122,25 @@ public class CategoryDAO implements ICategoryDAO {
             }
         }
         return -1;
+    }
+
+    @Override
+    public Category getCategoryById(int id) throws SQLException {
+        String query = "SELECT * FROM categories WHERE id = ? AND (is_deleted = FALSE OR is_deleted IS NULL)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    String name = rs.getString("name");
+                    String typeStr = rs.getString("transaction_type");
+                    String icon = rs.getString("icon");
+                    String color = rs.getString("color");
+                    return new Category(name, TransactionType.valueOf(typeStr), icon, color);
+                }
+            }
+        }
+        return null;
     }
 
     @Override

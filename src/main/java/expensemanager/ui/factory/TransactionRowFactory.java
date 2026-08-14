@@ -74,7 +74,12 @@ public final class TransactionRowFactory {
             // Giao dich lap lai trong khoi "Dinh ky sap toi": khong hien ngay khoi tao,
             // chi hien ky han tiep theo.
             RecurringExpense re = (RecurringExpense) t;
-            dateLabel = new Label("K\u1ef3 ti\u1ebfp theo: " + re.nextDueDate().toString());
+            java.time.LocalDate nextDate = re.nextDueDate();
+            if (nextDate != null) {
+                dateLabel = new Label("K\u1ef3 ti\u1ebfp theo: " + nextDate.toString());
+            } else {
+                dateLabel = new Label("\u0110\u00e3 k\u1ebft th\u00fac");
+            }
         } else if (isPending) {
             // Occurrence ao cua giao dich lap lai, chua toi han trong ky dang xem.
             dateLabel = new Label("D\u1ef1 ki\u1ebfn: " + t.getDate().toString());

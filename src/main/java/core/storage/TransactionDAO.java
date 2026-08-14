@@ -23,26 +23,12 @@ public class TransactionDAO implements ITransactionDAO {
 
     public TransactionDAO() {
         this.categoryDAO = new CategoryDAO(); // In real DI, this would be injected
-        ensureSchemaColumns();
     }
     
     public TransactionDAO(ICategoryDAO categoryDAO) {
         this.categoryDAO = categoryDAO;
-        ensureSchemaColumns();
     }
 
-    private void ensureSchemaColumns() {
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-            try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE"); } catch (SQLException e) {}
-            try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN recurring_period VARCHAR(50)"); } catch (SQLException e) {}
-            try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN passed_periods INT DEFAULT 0"); } catch (SQLException e) {}
-            try { stmt.executeUpdate("ALTER TABLE transactions ADD COLUMN recurring_end_date DATE"); } catch (SQLException e) {}
-        } catch (SQLException e) {
-            System.err.println("Warning: could not ensure transaction schema columns: " + e.getMessage());
-        }
-    }
-    
     @Override
     public double getTotalAmountForPeriod(String type, java.time.LocalDate startDate, java.time.LocalDate endDate) throws SQLException {
         String sql = "SELECT SUM(amount) as total FROM transactions WHERE transaction_type = ? AND date >= ? AND date <= ?";
@@ -123,7 +109,7 @@ public class TransactionDAO implements ITransactionDAO {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error saving transaction: " + e.getMessage());
+            throw new RuntimeException("Database error saving transaction", e);
         }
     }
 
@@ -135,13 +121,13 @@ public class TransactionDAO implements ITransactionDAO {
             pstmt.setInt(1, transactionId);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Error deleting transaction: " + e.getMessage());
+            throw new RuntimeException("Database error deleting transaction", e);
         }
     }
 
     @Override
     public void updateTransaction(Transaction t, int walletId) {
-        String updateSql = "UPDATE transactions SET amount = ?, date = ?, note = ?, category_id = ?, transaction_type = ?, source = ?, payment_method = ?, is_recurring = ?, recurring_period = ?, passed_periods = ?, recurring_end_date = ? WHERE id = ?";
+        String updateSql = "UPDATE transactions SET amount = ?, date = ?, note = ?, category_id = ?, transaction_type = ?, source = ?, payment_method = ?, is_recurring = ?, recurring_period = ?, passed_periods = ?, recurring_end_date = ?, wallet_id = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
              
@@ -191,18 +177,13 @@ public class TransactionDAO implements ITransactionDAO {
                 pstmt.setInt(10, 0);
                 pstmt.setNull(11, Types.DATE);
             }
-            pstmt.setInt(12, t.getId());
+            pstmt.setInt(12, walletId);
+            pstmt.setInt(13, t.getId());
             
             pstmt.executeUpdate();
             
-            try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    t.setId(generatedKeys.getInt(1));
-                }
-            }
-            
         } catch (SQLException e) {
-            System.err.println("Error updating transaction: " + e.getMessage());
+            throw new RuntimeException("Database error updating transaction", e);
         }
     }
 
@@ -259,11 +240,8 @@ public class TransactionDAO implements ITransactionDAO {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error loading transactions: " + e.getMessage());
+            throw new RuntimeException("Database error loading transactions", e);
         }
-        
-        // Removed processRecurringExpenses(transactions, wallet.getId());
-        // This business logic should be in the Service layer.
         
         wallet.setBalance(originalBalance); // Restore original balance to prevent double counting
         

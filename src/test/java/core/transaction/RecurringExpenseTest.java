@@ -53,7 +53,7 @@ public class RecurringExpenseTest {
 
         LocalDate nextDueDate = recurringExpense.nextDueDate();
 
-        assertEquals(today, nextDueDate);
-        assertTrue(!nextDueDate.isBefore(today));
+        assertEquals(recurringExpense.getDate().plusMonths(3), nextDueDate);
+        assertTrue(nextDueDate.isAfter(today));
     }
 }

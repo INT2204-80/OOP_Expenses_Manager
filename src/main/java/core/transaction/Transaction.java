@@ -79,12 +79,12 @@ public abstract class Transaction {
      *
      * @param amount so tien can kiem tra
      * @return so tien neu hop le
-     * @throws IllegalArgumentException neu so tien khong lon hon 0,
+     * @throws IllegalArgumentException neu so tien am,
      *         la NaN hoac vo cuc
      */
     public static double validateAmount(double amount) {
             if ((amount < 0) || (!Double.isFinite(amount))) {
-                throw new IllegalArgumentException("Income amount input cannot be negative");
+                throw new IllegalArgumentException("Transaction amount input cannot be negative");
             }
         return amount;
     }
