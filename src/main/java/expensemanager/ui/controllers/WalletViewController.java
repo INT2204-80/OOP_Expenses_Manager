@@ -157,9 +157,14 @@ public class WalletViewController {
         if (currentWallet == null) {
             return;
         }
-        List<Transaction> loadedTransactions = transactionService.getTransactionsByWallet(currentWallet);
-        currentWallet.getTransactions().clear();
-        currentWallet.getTransactions().addAll(loadedTransactions);
+        try {
+            List<Transaction> loadedTransactions = transactionService.getTransactionsByWallet(currentWallet);
+            currentWallet.getTransactions().clear();
+            currentWallet.getTransactions().addAll(loadedTransactions);
+        } catch (RuntimeException e) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi", "Số dư không đủ để tạo giao dịch định kỳ");
+            e.printStackTrace();
+        }
     }
 
     private void refreshTransactionsView() {

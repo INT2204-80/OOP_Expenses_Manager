@@ -122,6 +122,7 @@ public class TransactionService {
     public void addTransactionAndUpdateWallet(Transaction t, Wallet wallet) {
         double oldBalance = wallet.getBalance();
         List<Transaction> oldTransactions = new ArrayList<>(wallet.getTransactions());
+        int oldId = t.getId();
         
         try {
             applyToWallet(t, wallet);
@@ -142,6 +143,7 @@ public class TransactionService {
             wallet.setBalance(oldBalance);
             wallet.getTransactions().clear();
             wallet.getTransactions().addAll(oldTransactions);
+            t.setId(oldId);
             throw new RuntimeException("Database error adding transaction", e);
         }
     }
@@ -160,6 +162,7 @@ public class TransactionService {
 
         double oldBalance = wallet.getBalance();
         List<Transaction> oldTransactions = new ArrayList<>(wallet.getTransactions());
+        int oldReId = re.getId();
 
         try {
             applyToWallet(re, wallet);
@@ -193,6 +196,7 @@ public class TransactionService {
             wallet.setBalance(oldBalance);
             wallet.getTransactions().clear();
             wallet.getTransactions().addAll(oldTransactions);
+            re.setId(oldReId);
             throw new RuntimeException("Database error adding recurring expense", e);
         }
     }
