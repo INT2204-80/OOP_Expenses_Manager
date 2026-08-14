@@ -182,13 +182,10 @@ public class WalletTransactionManager {
     }
 
     /**
-     * Xu ly them RecurringExpense moi. Neu ngay khoi tao o qua khu va da qua X chu ky,
-     * hoi xac nhan nguoi dung truoc khi backfill X giao dich tuong ung.
-     *
-     * <p>Luu y: constructor cua RecurringExpense (ke thua Expense) da tu tru 1 lan
-     * amount vao currentWallet ngay khi dialog tra ve object nay. Neu nguoi dung Huy
-     * xac nhan backfill, phai hoan (deposit) lai khoan do vi yeu cau la "Huy toan bo,
-     * khong them transaction nao".
+     * Xử lý thêm RecurringExpense mới.
+     * Constructor không làm thay đổi số dư ví.
+     * Việc trừ tiền được thực hiện tập trung trong TransactionService.
+     * Nếu ngày khởi tạo ở quá khứ và đã qua X chu kỳ, hỏi xác nhận người dùng trước khi backfill X giao dịch tương ứng.
      */
     private void handleAddRecurringWithBackfill(RecurringExpense re, Wallet currentWallet, Runnable refreshCallback) {
         re.nextDueDate(); // tinh toan lai passedPeriods dua tren ngay hien tai

@@ -56,4 +56,32 @@ public class RecurringExpenseTest {
         assertEquals(recurringExpense.getDate().plusMonths(3), nextDueDate);
         assertTrue(nextDueDate.isAfter(today));
     }
+
+    private RecurringExpense createRecurringExpense(Period period) {
+        return new RecurringExpense(
+                1,
+                50.0,
+                LocalDate.now(),
+                "Subscription",
+                new Category("Subscription", TransactionType.EXPENSE),
+                new CashWallet("Wallet", 1000.0),
+                "Cash",
+                period
+        );
+    }
+
+    @Test
+    void constructorRejectsInvalidPeriods() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> createRecurringExpense(Period.ZERO));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> createRecurringExpense(Period.ofDays(-1)));
+    }
+
+    @Test
+    void setPassedPeriodsRejectsNegativeValues() {
+        RecurringExpense recurringExpense = createRecurringExpense(Period.ofDays(7));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> recurringExpense.setPassedPeriods(-1));
+    }
 }

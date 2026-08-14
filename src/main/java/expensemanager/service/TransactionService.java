@@ -3,7 +3,9 @@ package expensemanager.service;
 import java.sql.Connection;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import core.storage.DatabaseConnection;
 import core.storage.ITransactionDAO;
@@ -35,6 +37,8 @@ public class TransactionService {
 
     private void processRecurringExpenses(List<Transaction> transactions, Wallet wallet) {
         List<Transaction> newExpenses = new ArrayList<>();
+        Map<RecurringExpense, Integer> oldPassedPeriodsMap = new HashMap<>();
+        double oldBalance = wallet.getBalance();
         boolean hasUpdates = false;
 
         for (Transaction t : transactions) {
@@ -45,6 +49,7 @@ public class TransactionService {
                 int newPassed = re.getPassedPeriods();
                 
                 if (newPassed > oldPassed) {
+                    oldPassedPeriodsMap.put(re, oldPassed);
                     for (int i = oldPassed + 1; i <= newPassed; i++) {
                         LocalDate generatedDate = re.getDate().plus(re.getPeriod().multipliedBy(i));
                         Expense newExpense = new Expense(0, re.getAmount(), generatedDate, 
@@ -64,11 +69,8 @@ public class TransactionService {
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
             try {
-                for (Transaction t : transactions) {
-                    if (t instanceof RecurringExpense) {
-                        RecurringExpense re = (RecurringExpense) t;
-                        transactionDAO.updateTransaction(conn, re, wallet.getId());
-                    }
+                for (Map.Entry<RecurringExpense, Integer> entry : oldPassedPeriodsMap.entrySet()) {
+                    transactionDAO.updateTransaction(conn, entry.getKey(), wallet.getId());
                 }
                 
                 for (Transaction newExp : newExpenses) {
@@ -80,10 +82,16 @@ public class TransactionService {
                 conn.commit();
             } catch (Exception e) {
                 conn.rollback();
-                throw new RuntimeException("Transaction failed", e);
+                throw e; // throw inner exception to be caught outside
             }
         } catch (Exception e) {
-            throw new RuntimeException("Database connection error", e);
+            // Revert memory
+            for (Map.Entry<RecurringExpense, Integer> entry : oldPassedPeriodsMap.entrySet()) {
+                entry.getKey().setPassedPeriods(entry.getValue());
+            }
+            wallet.setBalance(oldBalance);
+            transactions.removeAll(newExpenses);
+            throw new RuntimeException("Database error during processRecurringExpenses", e);
         }
     }
 
@@ -107,6 +115,7 @@ public class TransactionService {
      * Thêm giao dịch mới, tự động cập nhật số dư ví và lưu Database
      */
     public void addTransactionAndUpdateWallet(Transaction t, Wallet wallet) {
+        double oldBalance = wallet.getBalance();
         applyToWallet(t, wallet);
         wallet.addTransaction(t); 
         
@@ -118,14 +127,12 @@ public class TransactionService {
                 conn.commit();
             } catch (Exception e) {
                 conn.rollback();
-                revertFromWallet(t, wallet);
-                wallet.getTransactions().remove(t);
-                throw new RuntimeException("Transaction failed", e);
+                throw e;
             }
         } catch (Exception e) {
-            revertFromWallet(t, wallet);
+            wallet.setBalance(oldBalance);
             wallet.getTransactions().remove(t);
-            throw new RuntimeException("Database error", e);
+            throw new RuntimeException("Database error adding transaction", e);
         }
     }
 
@@ -134,6 +141,7 @@ public class TransactionService {
      */
     public void addRecurringExpenseWithBackfill(RecurringExpense re, Wallet wallet) {
         int passed = re.getPassedPeriods();
+        double oldBalance = wallet.getBalance();
 
         applyToWallet(re, wallet);
         wallet.addTransaction(re);
@@ -159,23 +167,13 @@ public class TransactionService {
                 conn.commit();
             } catch (Exception e) {
                 conn.rollback();
-                // revert memory
-                for (Expense ex : backfillExpenses) {
-                    revertFromWallet(ex, wallet);
-                    wallet.getTransactions().remove(ex);
-                }
-                revertFromWallet(re, wallet);
-                wallet.getTransactions().remove(re);
-                throw new RuntimeException("Transaction failed", e);
+                throw e;
             }
         } catch (Exception e) {
-            for (Expense ex : backfillExpenses) {
-                revertFromWallet(ex, wallet);
-                wallet.getTransactions().remove(ex);
-            }
-            revertFromWallet(re, wallet);
+            wallet.setBalance(oldBalance);
             wallet.getTransactions().remove(re);
-            throw new RuntimeException("Database error", e);
+            wallet.getTransactions().removeAll(backfillExpenses);
+            throw new RuntimeException("Database error adding recurring expense", e);
         }
     }
 
@@ -183,12 +181,16 @@ public class TransactionService {
      * Cập nhật giao dịch (Sửa), tự động tính toán lại số dư chênh lệch và lưu Database
      */
     public void updateTransactionAndUpdateWallet(Transaction oldT, Transaction newT, Wallet wallet) {
+        int oldPassed = -1;
         if (newT instanceof RecurringExpense && oldT instanceof RecurringExpense) {
+            oldPassed = ((RecurringExpense) newT).getPassedPeriods();
             ((RecurringExpense) newT).setPassedPeriods(((RecurringExpense) oldT).getPassedPeriods());
         }
 
-        revertFromWallet(oldT, wallet);
+        double oldBalance = wallet.getBalance();
         int oldIndex = wallet.getTransactions().indexOf(oldT);
+        
+        revertFromWallet(oldT, wallet);
         wallet.getTransactions().remove(oldT);
         
         applyToWallet(newT, wallet);
@@ -202,27 +204,20 @@ public class TransactionService {
                 conn.commit();
             } catch (Exception e) {
                 conn.rollback();
-                // revert memory
-                revertFromWallet(newT, wallet);
-                wallet.getTransactions().remove(newT);
-                applyToWallet(oldT, wallet);
-                if (oldIndex >= 0 && oldIndex <= wallet.getTransactions().size()) {
-                    wallet.getTransactions().add(oldIndex, oldT);
-                } else {
-                    wallet.getTransactions().add(oldT);
-                }
-                throw new RuntimeException("Transaction failed", e);
+                throw e;
             }
         } catch (Exception e) {
-            revertFromWallet(newT, wallet);
+            wallet.setBalance(oldBalance);
             wallet.getTransactions().remove(newT);
-            applyToWallet(oldT, wallet);
             if (oldIndex >= 0 && oldIndex <= wallet.getTransactions().size()) {
                 wallet.getTransactions().add(oldIndex, oldT);
             } else {
                 wallet.getTransactions().add(oldT);
             }
-            throw new RuntimeException("Database error", e);
+            if (oldPassed != -1) {
+                ((RecurringExpense) newT).setPassedPeriods(oldPassed);
+            }
+            throw new RuntimeException("Database error updating transaction", e);
         }
     }
 
@@ -230,8 +225,10 @@ public class TransactionService {
      * Xóa giao dịch, tự động hoàn tiền lại vào ví và xóa khỏi Database
      */
     public void deleteTransactionAndUpdateWallet(Transaction t, Wallet wallet) {
-        revertFromWallet(t, wallet);
+        double oldBalance = wallet.getBalance();
         int oldIndex = wallet.getTransactions().indexOf(t);
+        
+        revertFromWallet(t, wallet);
         wallet.getTransactions().remove(t);
         
         try (Connection conn = DatabaseConnection.getConnection()) {
@@ -242,23 +239,16 @@ public class TransactionService {
                 conn.commit();
             } catch (Exception e) {
                 conn.rollback();
-                // revert memory
-                applyToWallet(t, wallet);
-                if (oldIndex >= 0 && oldIndex <= wallet.getTransactions().size()) {
-                    wallet.getTransactions().add(oldIndex, t);
-                } else {
-                    wallet.getTransactions().add(t);
-                }
-                throw new RuntimeException("Transaction failed", e);
+                throw e;
             }
         } catch (Exception e) {
-            applyToWallet(t, wallet);
+            wallet.setBalance(oldBalance);
             if (oldIndex >= 0 && oldIndex <= wallet.getTransactions().size()) {
                 wallet.getTransactions().add(oldIndex, t);
             } else {
                 wallet.getTransactions().add(t);
             }
-            throw new RuntimeException("Database error", e);
+            throw new RuntimeException("Database error deleting transaction", e);
         }
     }
 }

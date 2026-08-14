@@ -23,9 +23,15 @@ public class CategoryDAO implements ICategoryDAO {
 
     @Override
     public int getOrCreateCategoryId(String name, String type, String icon, String color) throws SQLException {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            return getOrCreateCategoryId(conn, name, type, icon, color);
+        }
+    }
+
+    @Override
+    public int getOrCreateCategoryId(Connection conn, String name, String type, String icon, String color) throws SQLException {
         String selectSql = "SELECT id FROM categories WHERE name = ? AND transaction_type = ?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(selectSql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(selectSql)) {
             pstmt.setString(1, name);
             pstmt.setString(2, type);
             try (ResultSet rs = pstmt.executeQuery()) {
@@ -46,8 +52,7 @@ public class CategoryDAO implements ICategoryDAO {
         }
         
         String insertSql = "INSERT INTO categories (name, transaction_type, icon, color) VALUES (?, ?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, name);
             pstmt.setString(2, type);
             pstmt.setString(3, icon);

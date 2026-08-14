@@ -61,6 +61,7 @@ public class TransactionDAO implements ITransactionDAO {
         try (PreparedStatement pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
              
             int categoryId = categoryDAO.getOrCreateCategoryId(
+                    conn,
                     t.getCategory().getName(),
                     t.getType().name(),
                     t.getCategory().getIcon(),
@@ -151,6 +152,7 @@ public class TransactionDAO implements ITransactionDAO {
         try (PreparedStatement pstmt = conn.prepareStatement(updateSql)) {
              
             int categoryId = categoryDAO.getOrCreateCategoryId(
+                    conn,
                     t.getCategory().getName(),
                     t.getType().name(),
                     t.getCategory().getIcon(),
