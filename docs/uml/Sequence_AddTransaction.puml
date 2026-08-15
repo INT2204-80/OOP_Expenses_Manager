@@ -1,86 +1,104 @@
 @startuml Sequence_AddTransaction
-' ====== CLEAN LIGHT THEME ======
+
 skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
-skinparam defaultFontSize 12
+skinparam defaultFontSize 13
 skinparam shadowing false
-
+skinparam maxMessageSize 55
 skinparam sequence {
-    ArrowColor #1565C0
-    LifeLineBorderColor #90CAF9
-    LifeLineBackgroundColor #F5F5F5
-    ParticipantBorderColor #1565C0
+    ArrowColor #455A64
+    LifeLineBorderColor #90A4AE
+    LifeLineBackgroundColor #FAFAFA
+    ParticipantBorderColor #607D8B
     ParticipantBackgroundColor #E3F2FD
-    ParticipantFontColor #0D47A1
     ActorBorderColor #E65100
     ActorBackgroundColor #FFF3E0
-    DividerBackgroundColor #E8EAF6
-    DividerBorderColor #C5CAE9
     GroupBackgroundColor #FAFAFA
-    GroupBorderColor #BDBDBD
+    GroupBorderColor #B0BEC5
+    ParticipantPadding 20
+    BoxPadding 10
 }
 skinparam note {
-    BackgroundColor #FFF9C4
+    BackgroundColor #FFF8E1
     BorderColor #F9A825
-    FontColor #212121
 }
 
-title Sequence Diagram – Thêm giao dịch chi tiêu
+title Sequence - Thêm giao dịch và cập nhật số dư nguyên tử
+autonumber
 
 actor "Người dùng" as User
-participant "WalletView\nController" as UI
-participant "WalletTransaction\nManager" as TM
-participant "Transaction\nService" as TS
-participant "Wallet" as W
-participant "Transaction\nDAO" as TDAO
-participant "Category\nDAO" as CDAO
-participant "WalletDAO" as WDAO
+boundary "WalletView\nController" as Controller
+control "WalletTransaction\nManager" as Manager
+boundary "Transaction dialog" as Dialog
+control "Transaction\nService" as Service
+entity "Wallet" as Wallet
+participant "DAO layer\nTransactionDAO + WalletDAO" as DAO
 database "MySQL" as DB
 
-== 1. Mở Dialog ==
+group Nhập giao dịch
+    User -> Controller : Bấm "Thêm giao dịch"
+    Controller -> Manager : showAddTransactionDialog(categories, wallet, callback)
+    Manager -> Dialog : create và showAndWait()
+    Dialog --> User : Hiển thị biểu mẫu
+    User -> Dialog : Nhập dữ liệu, xác nhận
+    Dialog --> Manager : Transaction t
+end
 
-User -> UI : Bấm "Thêm giao dịch"
-UI -> TM : showAddTransactionDialog()
-TM --> User : Hiển thị Dialog nhập liệu
+alt Dữ liệu không hợp lệ
+    Manager --> User : Hiển thị lỗi, không lưu
+else Dữ liệu hợp lệ
+    alt t là RecurringExpense có kỳ đã qua
+        Manager --> User : Xác nhận backfill các kỳ đã qua
+        alt Người dùng đồng ý
+            Manager -> Service : addRecurringExpenseWithBackfill(re, wallet)
+        else Người dùng hủy
+            break Hủy thao tác
+                Manager --> User : Kết thúc, không thay đổi dữ liệu
+            end
+        end
+    else Giao dịch thường / recurring chưa quá hạn
+        Manager -> Service : addTransactionAndUpdateWallet(t, wallet)
+    end
 
-== 2. Submit & Xử lý nghiệp vụ ==
+    group Xử lý nghiệp vụ trong bộ nhớ
+        Service -> Service : snapshot balance, transaction list và ID
+        alt Income
+            Service -> Wallet : deposit(amount)
+        else Expense / RecurringExpense
+            Service -> Wallet : withdraw(amount)
+        end
+        Service -> Wallet : addTransaction(t)
+    end
 
-User -> TM : Nhập thông tin → Submit
+    group Lưu DB trong cùng một JDBC transaction
+        Service -> DAO : save transaction(s) và update balance
+        DAO -> DB : BEGIN; INSERT transaction(s); UPDATE wallet
+        DB --> DAO : generated ID / kết quả
 
-TM -> TS : addTransactionAndUpdateWallet(t, wallet)
-activate TS #FFF3E0
+        alt Tất cả thao tác thành công
+            DAO -> DB : COMMIT
+            DAO --> Service : success
+            Service --> Manager : success
+            Manager -> Controller : callback.run()
+            Controller --> User : Làm mới danh sách và số dư
+        else Thiếu số dư hoặc lỗi DAO / JDBC
+            DAO -> DB : ROLLBACK (nếu đã bắt đầu)
+            DAO --> Service : exception
+            Service -> Service : khôi phục balance, list và ID cũ
+            Service --> Manager : RuntimeException
+            Manager --> User : Hiển thị thông báo lỗi
+        end
+    end
+end
 
-TS -> W : wallet.addTransaction(t)
-note right of W
-  Constructor **Expense**
-  tự gọi wallet.withdraw()
-  → Trừ số dư ví
+note over Service, Wallet
+  Constructor Income / Expense / RecurringExpense chỉ tạo object.
+  Chỉ TransactionService được cộng hoặc trừ số dư ví.
 end note
 
-== 3. Lưu vào Database ==
-
-TS -> TDAO : saveTransaction(t, walletId)
-activate TDAO #E8F5E9
-
-TDAO -> CDAO : getOrCreateCategoryId(...)
-CDAO -> DB : SELECT / INSERT categories
-DB --> CDAO : categoryId
-CDAO --> TDAO : categoryId
-
-TDAO -> DB : INSERT INTO transactions
-DB --> TDAO : generatedId
-deactivate TDAO
-
-TS -> WDAO : updateBalance(walletId, balance)
-WDAO -> DB : UPDATE wallets SET balance
-WDAO --> TS : done
-
-deactivate TS
-
-== 4. Cập nhật giao diện ==
-
-TS --> TM : success
-TM -> UI : refreshTransactionsView()
-UI --> User : Cập nhật danh sách,\nbiểu đồ, số dư
+note over DAO, DB
+  TransactionDAO tự tra/tạo category bằng cùng Connection;
+  WalletDAO cập nhật balance trước khi COMMIT.
+end note
 
 @enduml

@@ -52,6 +52,47 @@ Dự án áp dụng chặt chẽ các nguyên lý Thiết kế Hướng đối t
 
 ---
 
+## 📸 Sơ Đồ Thiết Kế & UML (Diagrams)
+
+### 1. Sơ đồ Use Case (Use Case Diagram)
+![Use Case Diagram](docs/previews/UseCase_Diagram.png)
+
+### 2. Kiến trúc Tổng thể (N-Tier Architecture)
+![N-Tier Architecture](docs/previews/Architecture_NTier.png)
+
+### 3. Sơ đồ Lớp (Class Diagrams)
+
+#### Domain Models
+![Domain Models](docs/previews/_Overview_Domain.png)
+*(Bao gồm Wallet Hierarchy, Transaction Hierarchy, và Relationship Map)*
+
+#### DAO & Services (Persistence & Logic)
+![DAO and Services](docs/previews/_Overview_DAO_Service.png)
+*(Bao gồm JDBC Persistence, Application Services)*
+
+#### UI Controllers & Views
+![UI Controllers](docs/previews/_Overview_UI.png)
+*(Bao gồm UI Entry Controllers, Factory Utilities)*
+
+### 4. Sơ đồ Tuần tự (Sequence Diagrams)
+
+#### Thêm Giao Dịch (Add Transaction)
+![Sequence Add Transaction](docs/previews/Sequence_AddTransaction.png)
+
+#### Quản lý Ngân Sách (Budget Management)
+![Sequence Budget Management](docs/previews/Sequence_BudgetManagement.png)
+
+#### Gộp Danh Mục (Merge Categories)
+![Sequence Merge Categories](docs/previews/Sequence_MergeCategories.png)
+
+#### Xử lý Giao Dịch Định Kỳ (Recurring Expense)
+![Sequence Recurring Expense](docs/previews/Sequence_RecurringExpense.png)
+
+#### Cập nhật Dashboard (Dashboard Update)
+![Sequence Dashboard](docs/previews/Sequence_Dashboard.png)
+
+---
+
 ## 🚀 Hướng Dẫn Cài Đặt và Khởi Chạy
 
 ### 1. Chuẩn bị Môi Trường
@@ -84,4 +125,4 @@ mvn javafx:run
 
 ## 👨‍💻 Tác Giả & Bản Quyền
 - Dự án thuộc môn học **Lập trình Hướng đối tượng (INT2204-80)** - Trường Đại học Công nghệ, ĐHQGHN.
-- Mã nguồn mở nhằm mục đích học tập và tham khảo.
+- Mã nguồn mở nhằm mục đích học tập và tham khảo. Dự án được phân phối dưới giấy phép **Apache License 2.0**. Xem chi tiết tại file [LICENSE](LICENSE).

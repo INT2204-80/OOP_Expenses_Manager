@@ -1,79 +1,86 @@
 @startuml Sequence_MergeCategories
-' ====== CLEAN LIGHT THEME ======
+
 skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
-skinparam defaultFontSize 12
+skinparam defaultFontSize 13
 skinparam shadowing false
-
+skinparam maxMessageSize 58
 skinparam sequence {
-    ArrowColor #1565C0
-    LifeLineBorderColor #90CAF9
-    LifeLineBackgroundColor #F5F5F5
-    ParticipantBorderColor #1565C0
+    ArrowColor #455A64
+    LifeLineBorderColor #90A4AE
+    LifeLineBackgroundColor #FAFAFA
+    ParticipantBorderColor #607D8B
     ParticipantBackgroundColor #E3F2FD
-    ParticipantFontColor #0D47A1
     ActorBorderColor #E65100
     ActorBackgroundColor #FFF3E0
-    DividerBackgroundColor #E8EAF6
-    DividerBorderColor #C5CAE9
     GroupBackgroundColor #FAFAFA
-    GroupBorderColor #BDBDBD
-}
-skinparam note {
-    BackgroundColor #FFF9C4
-    BorderColor #F9A825
-    FontColor #212121
+    GroupBorderColor #B0BEC5
+    ParticipantPadding 24
 }
 
-title Sequence Diagram – Gộp danh mục (Merge Categories)
+title Sequence - Gộp danh mục
+autonumber
 
 actor "Người dùng" as User
-participant "WalletCategory\nManager" as UI
-participant "Category\nService" as CS
-participant "Category\nDAO" as CDAO
+boundary "WalletView\nController" as Controller
+control "WalletCategory\nManager" as Manager
+control "CategoryService" as Service
+participant "CategoryDAO" as DAO
 database "MySQL" as DB
 
-User -> UI : Chọn ≥ 2 danh mục\n→ Bấm "Gộp"
-activate UI
+User -> Controller : Chọn danh mục và bấm "Gộp"
+Controller -> Manager : handleMergeCategories(...)
 
-UI --> User : ChoiceDialog:\n"Chọn danh mục ĐÍCH"
+alt Chọn ít hơn 2 danh mục
+    Manager --> User : Cảnh báo cần chọn ít nhất 2
+else Đã chọn từ 2 danh mục
+    Manager --> User : Hiển thị ChoiceDialog chọn target
+    User --> Manager : target category
+    Manager -> Manager : sources = selected - target
 
-User -> UI : Chọn target
+    alt Có category khác TransactionType với target
+        Manager --> User : Không thể gộp INCOME với EXPENSE
+    else Tất cả cùng TransactionType
+        Manager -> Service : mergeCategories(sources, target)
+        Service -> DAO : mergeCategories(sources, target)
 
-== Xử lý gộp ==
+        DAO -> DB : SELECT targetId
+        DB --> DAO : targetId
 
-UI -> CS : mergeCategories(sources, target)
-activate CS #FFF3E0
+        group Một JDBC transaction cho các UPDATE
+            DAO -> DB : BEGIN
+            loop Mỗi source
+                DAO -> DB : tìm sourceId
+                DAO -> DB : UPDATE transactions → targetId
+                DAO -> DB : UPDATE source category → is_deleted = TRUE
+            end
 
-CS -> CDAO : mergeCategories(sources, target)
-activate CDAO #E8F5E9
-
-CDAO -> DB : SELECT id FROM categories\nWHERE name = target
-DB --> CDAO : targetId
-
-CDAO -> DB : BEGIN TRANSACTION
-
-loop Mỗi danh mục nguồn (source)
-    CDAO -> DB : UPDATE transactions\nSET category_id = targetId\nWHERE category_id = sourceId
-    note right of DB
-      Chuyển toàn bộ giao dịch
-      sang danh mục đích
-    end note
-
-    CDAO -> DB : UPDATE categories\nSET is_deleted = TRUE\nWHERE id = sourceId
-    note right of DB
-      Xóa mềm danh mục nguồn
-    end note
+            alt SQL thành công
+                DAO -> DB : COMMIT
+                DAO --> Service : success
+                Service --> Manager : success
+                Manager -> Service : getAllCategories()
+                Service -> DAO : getAllCategories()
+                DAO -> DB : SELECT active categories
+                DB --> DAO : List<Category>
+                DAO --> Service : List<Category>
+                Service --> Manager : List<Category>
+                Manager -> Controller : Làm mới danh sách và bộ lọc
+                Controller --> User : Gộp danh mục thành công
+            else SQLException
+                DAO -> DB : ROLLBACK
+                DAO --> Service : SQLException
+                Service --> Manager : SQLException
+                Manager --> User : Hiển thị thông báo lỗi
+            end
+        end
+    end
 end
 
-CDAO -> DB : COMMIT
-deactivate CDAO
-
-CS --> UI : done
-deactivate CS
-
-UI -> UI : loadCategoriesToUI()
-UI --> User : Danh sách đã cập nhật
-deactivate UI
+note over DAO, DB
+  Không xóa vật lý category nguồn.
+  Các transaction được chuyển sang target trước khi source bị xóa mềm.
+  Các lệnh UPDATE dùng chung transaction; lookup ID đi qua helper query.
+end note
 
 @enduml

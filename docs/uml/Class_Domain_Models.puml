@@ -1,85 +1,139 @@
-@startuml Class_Domain_Models
-' ====== CLEAN LIGHT THEME ======
-skinparam backgroundColor white
+@startuml Domain_Wallet_Hierarchy
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
 skinparam defaultFontName "Segoe UI"
 skinparam defaultFontSize 12
 skinparam shadowing false
-skinparam classAttributeIconSize 0
 skinparam linetype ortho
-
+skinparam roundCorner 10
+skinparam nodesep 42
+skinparam ranksep 50
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
 skinparam class {
     BackgroundColor #FFFFFF
-    BorderColor #90CAF9
-    HeaderBackgroundColor #E3F2FD
-    FontColor #212121
-    ArrowColor #1565C0
-    StereotypeFontColor #1565C0
+    BorderColor #64748B
+    HeaderBackgroundColor #DCFCE7
+    FontColor #1E293B
+}
+skinparam enum {
+    BackgroundColor #FFFBEB
+    BorderColor #D97706
+    FontColor #78350F
+}
+skinparam rectangle {
+    BorderColor #475569
+    BackgroundColor #475569
+}
+hide circle
+
+title <b>Domain Model · Wallet Hierarchy</b>\n<size:12><color:#64748B>core.wallet</color></size>
+top to bottom direction
+
+abstract class Wallet {
+    - id : int
+    - name : String
+    - balance : double
+    - currency : String = "VND"
+    - transactions : List<Transaction>
+    --
+    + Wallet(name, balance [, currency])
+    + {static} validateAmount(amount) : double
+    + deposit(amount) : void
+    + withdraw(amount) : void
+    + addTransaction(transaction) : void
+    + setBalance(balance) : double
+    + {abstract} getWalletType() : WalletType
 }
 
-title Class Diagram – Domain Models (core.*)
-
-' ============= ENUMS =============
-enum TransactionType #FFF9C4 {
-    INCOME
-    EXPENSE
-}
-
-enum WalletType #FFF9C4 {
+enum WalletType {
     CASH
     BANK
     EWALLET
 }
 
-enum Period #FFF9C4 {
-    ONCE
-    DAILY
-    WEEKLY
-    BIWEEKLY
-    MONTHLY
-    YEARLY
-    --
-    + getDisplayName() : String
-    + toJavaPeriod() : java.time.Period
-}
+rectangle " " as WALLET_JOIN
 
-' ============= WALLET =============
-abstract class Wallet #E3F2FD {
-    - id : int
-    - name : String
-    - balance : double
-    - currency : String
-    - transactions : List<Transaction>
-    --
-    + deposit(amount : double)
-    + withdraw(amount : double)
-    + {abstract} getWalletType() : WalletType
-    + addTransaction(t : Transaction)
-    + getBalance() : double
-    + setBalance(balance : double) : double
-}
-
-class CashWallet #E8F5E9 {
+class CashWallet {
+    + withdraw(amount) : void
     + getWalletType() : WalletType
 }
 
-class BankAccount #E8F5E9 {
+class BankAccount {
     - bankName : String
     - accountNumber : String
     --
-    + getBankName() : String
-    + getAccountNumber() : String
+    + withdraw(amount) : void
     + getWalletType() : WalletType
 }
 
-class EWallet #E8F5E9 {
+class EWallet {
     - provider : String
     --
-    + getProvider() : String
+    + withdraw(amount) : void
     + getWalletType() : WalletType
 }
 
-' ============= TRANSACTION =============
-abstract class Transaction #E3F2FD {
+WALLET_JOIN -up-|> Wallet
+together {
+    BankAccount -up- WALLET_JOIN
+    EWallet -up- WALLET_JOIN
+    CashWallet -up- WALLET_JOIN
+}
+legend bottom
+  |= Quy tắc |= Giá trị đúng trong code |
+  | validateAmount | Từ chối số âm, NaN và vô cực; <b>0 được phép</b>. |
+  | withdraw | CashWallet, BankAccount và EWallet đều trừ đúng amount; <b>không có phí</b>. |
+  | Kiểu ví | Mỗi lớp con trả đúng CASH, BANK hoặc EWALLET. |
+endlegend
+
+@enduml
+
+@startuml Domain_Transaction_Hierarchy
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 10
+skinparam nodesep 42
+skinparam ranksep 50
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #64748B
+    HeaderBackgroundColor #FFEDD5
+    FontColor #1E293B
+}
+skinparam enum {
+    BackgroundColor #FFFBEB
+    BorderColor #D97706
+    FontColor #78350F
+}
+skinparam rectangle {
+    BorderColor #475569
+    BackgroundColor #475569
+}
+hide circle
+
+title <b>Domain Model · Transaction Hierarchy</b>\n<size:12><color:#64748B>core.transaction</color></size>
+top to bottom direction
+
+abstract class Transaction {
     - id : int
     - amount : double
     - date : LocalDate
@@ -87,49 +141,109 @@ abstract class Transaction #E3F2FD {
     - category : Category
     - wallet : Wallet
     --
+    + Transaction(id, amount, date, note, category, wallet)
+    + {static} validateAmount(amount) : double
     + {abstract} getType() : TransactionType
     + {abstract} getSignedAmount() : double
 }
 
-class Income #E8F5E9 {
+enum TransactionType {
+    INCOME
+    EXPENSE
+}
+
+rectangle " " as TRANSACTION_JOIN
+
+class Income {
     - source : String
     --
     + getType() : TransactionType
     + getSignedAmount() : double
 }
 
-class Expense #FFEBEE {
+class Expense {
     - paymentMethod : String
     --
     + getType() : TransactionType
     + getSignedAmount() : double
 }
 
-class RecurringExpense #FFCDD2 {
-    - period : java.time.Period
-    - passedPeriods : int
-    - endDate : LocalDate
-    --
-    + nextDueDate() : LocalDate
-    + getOccurrencesBetween(start, end) : List<LocalDate>
-}
-
-class PendingRecurringOccurrence #FFF3E0 {
+class PendingRecurringOccurrence {
     - source : RecurringExpense
     --
+    + PendingRecurringOccurrence(source, occurrenceDate)
+    + getSource() : RecurringExpense
     + getType() : TransactionType
     + getSignedAmount() : double
 }
 
-' ============= CATEGORY & BUDGET =============
-class Category #F3E5F5 {
-    - name : String
-    - type : TransactionType
-    - icon : String
-    - color : String
+class RecurringExpense {
+    - period : java.time.Period
+    - currentDueDate : LocalDate
+    - passedPeriods : int
+    - endDate : LocalDate
+    --
+    + nextDueDate([referenceDate]) : LocalDate
+    + getOccurrencesBetween(start, end) : List<LocalDate>
 }
 
-class Budget #FFF3E0 {
+TRANSACTION_JOIN -up-|> Transaction
+together {
+    Income -up- TRANSACTION_JOIN
+    Expense -up- TRANSACTION_JOIN
+    PendingRecurringOccurrence -up- TRANSACTION_JOIN
+}
+RecurringExpense -up-|> Expense
+
+legend bottom
+  |= Quy tắc |= Ý nghĩa |
+  | Constructor | Chỉ khởi tạo dữ liệu; không tự thay đổi số dư Wallet. |
+  | Số tiền có dấu | Income = +amount; Expense và RecurringExpense = -amount. |
+  | RecurringExpense | Kế thừa Expense và sinh các kỳ phát sinh trong khoảng thời gian. |
+  | PendingRecurringOccurrence | Giữ đúng 1 source RecurringExpense; chỉ dùng để hiển thị dự phóng, không lưu DB và không đổi balance. |
+endlegend
+
+@enduml
+
+@startuml Domain_Shared_Models
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 10
+skinparam nodesep 45
+skinparam ranksep 52
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #64748B
+    HeaderBackgroundColor #EDE9FE
+    FontColor #1E293B
+}
+skinparam enum {
+    BackgroundColor #FFFBEB
+    BorderColor #D97706
+    FontColor #78350F
+}
+skinparam rectangle {
+    BorderColor #475569
+    BackgroundColor #475569
+}
+hide circle
+
+title <b>Domain Model · Shared Types</b>\n<size:12><color:#64748B>core</color></size>
+top to bottom direction
+
+class Budget {
     - id : int
     - name : String
     - limitAmount : double
@@ -142,27 +256,106 @@ class Budget #FFF3E0 {
     + isExceed() : boolean
     + getRemainingAmount() : double
     + getUsagePercentage() : double
-    + calcDailyAllowance(date) : double
-    + appliesTo(t : Transaction) : boolean
-    + updateSpentFromTransactions(txs)
+    + calcDailyAllowance(currentDate) : double
+    + appliesTo(transaction) : boolean
+    + updateSpentFromTransactions(transactions) : void
 }
 
-' ============= RELATIONSHIPS =============
-Wallet <|-- CashWallet
-Wallet <|-- BankAccount
-Wallet <|-- EWallet
+class Category {
+    - name : String
+    - type : TransactionType
+    - icon : String
+    - color : String
+}
 
-Transaction <|-- Income
-Transaction <|-- Expense
-Expense <|-- RecurringExpense
-Transaction <|-- PendingRecurringOccurrence
+enum Period {
+    ONCE
+    DAILY
+    WEEKLY
+    BIWEEKLY
+    MONTHLY
+    YEARLY
+    --
+    + getDisplayName() : String
+    + toJavaPeriod() : java.time.Period
+}
 
-PendingRecurringOccurrence --> RecurringExpense : source
+enum TransactionType {
+    INCOME
+    EXPENSE
+}
 
-Transaction "many" --> "1" Category
-Transaction "many" --> "1" Wallet
-Budget --> "1" Category
-Budget --> "1" Period
-Category --> "1" TransactionType
+enum WalletType {
+    CASH
+    BANK
+    EWALLET
+}
+
+rectangle " " as BUDGET_JOIN
+
+Budget -down- BUDGET_JOIN
+together {
+    BUDGET_JOIN -down-> Category : category [0..1]
+    BUDGET_JOIN -down-> Period : period [0..1]
+}
+Category -down-> TransactionType : type
+
+legend bottom
+  |= Quan hệ |= Bội số / vai trò |
+  | Budget → Category | Mỗi Budget gắn tối đa 1 Category; một Category có thể dùng cho nhiều Budget. |
+  | Budget → Period | Mỗi Budget gắn tối đa 1 Period. |
+  | Category → TransactionType | Category được phân loại là INCOME hoặc EXPENSE. |
+endlegend
+
+@enduml
+
+@startuml Domain_Relationship_Map
+!pragma layout elk
+
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 10
+skinparam nodesep 55
+skinparam ranksep 55
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #64748B
+    HeaderBackgroundColor #E2E8F0
+    FontColor #1E293B
+}
+skinparam enum {
+    BackgroundColor #FFFBEB
+    BorderColor #D97706
+    FontColor #78350F
+}
+hide circle
+
+title <b>Domain Model · Cross-domain Relationships</b>\n<size:12><color:#64748B>Wallet → Transaction → Category → TransactionType</color></size>
+top to bottom direction
+
+class Wallet <<summary>>
+abstract class Transaction <<summary>>
+class Category <<summary>>
+enum TransactionType
+
+Wallet o-down- Transaction : 1 → 0..* transactions
+Transaction -down-> Category : 0..* → 1 category
+Category -down-> TransactionType : type
+
+legend bottom
+  |= Quan hệ |= Diễn giải |
+  | Wallet — Transaction | Một Wallet quản lý 0..* Transaction; mỗi Transaction thuộc đúng 1 Wallet. |
+  | Transaction — Category | Mỗi Transaction dùng đúng 1 Category; Category có thể được nhiều Transaction dùng lại. |
+  | Transaction / Category → TransactionType | Giá trị hợp lệ là INCOME hoặc EXPENSE. |
+endlegend
 
 @enduml

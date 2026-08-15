@@ -1,130 +1,367 @@
-@startuml Class_DAO_Service
-' ====== CLEAN LIGHT THEME ======
-skinparam backgroundColor white
+@startuml Class_Application_Services
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
 skinparam defaultFontName "Segoe UI"
 skinparam defaultFontSize 12
 skinparam shadowing false
-skinparam classAttributeIconSize 0
 skinparam linetype ortho
-
+skinparam roundCorner 10
+skinparam nodesep 46
+skinparam ranksep 48
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
 skinparam class {
     BackgroundColor #FFFFFF
-    BorderColor #90CAF9
-    HeaderBackgroundColor #E3F2FD
-    FontColor #212121
-    ArrowColor #1565C0
-    StereotypeFontColor #1565C0
+    BorderColor #64748B
+    HeaderBackgroundColor #DBEAFE
+    FontColor #1E293B
 }
-
-title Class Diagram – DAO Interfaces & Service Layer
-
-' ============= DAO INTERFACES (blue) =============
-interface ICategoryDAO #E3F2FD {
-    + getOrCreateCategoryId(name, type, icon, color) : int
-    + getAllCategories() : List<Category>
-    + mergeCategories(sources, target)
-    + updateCategory(...)
-    + softDeleteCategory(name, type)
+skinparam rectangle {
+    BackgroundColor #F1F5F9
+    BorderColor #94A3B8
+    FontColor #334155
+    RoundCorner 10
 }
+hide circle
 
-interface ITransactionDAO #E3F2FD {
-    + saveTransaction(t, walletId)
-    + deleteTransaction(id)
-    + updateTransaction(t, walletId)
-    + getTransactionsByWallet(wallet) : List<Transaction>
-    + getTotalAmountForPeriod(type, start, end) : double
-}
+title <b>Application Services</b>\n<size:12><color:#64748B>expensemanager.service · Service → DAO contracts</color></size>
+top to bottom direction
 
-interface IWalletDAO #E3F2FD {
-    + getAllWallets() : List<Wallet>
-    + addWallet(wallet)
-    + updateBalance(walletId, balance)
-    + updateWallet(wallet)
-    + deleteWallet(walletId)
-}
-
-interface IBudgetDAO #E3F2FD {
-    + addBudget(budget, walletId)
-    + updateBudget(budget)
-    + deleteBudget(id)
-    + getBudgetsByWallet(walletId) : List<Budget>
-}
-
-' ============= DAO IMPLEMENTATIONS (green) =============
-class CategoryDAO #E8F5E9 {
-}
-
-class TransactionDAO #E8F5E9 {
-    - categoryDAO : ICategoryDAO
-}
-
-class WalletDAO #E8F5E9 {
-}
-
-class BudgetDAO #E8F5E9 {
-}
-
-' ============= SERVICES (orange) =============
-class TransactionService #FFF3E0 {
+class TransactionService {
     - transactionDAO : ITransactionDAO
     - walletDAO : IWalletDAO
     --
     + getTransactionsByWallet(wallet) : List<Transaction>
-    + addTransactionAndUpdateWallet(t, wallet)
-    + updateTransactionAndUpdateWallet(old, new, wallet)
-    + deleteTransactionAndUpdateWallet(t, wallet)
-    - processRecurringExpenses(txs, walletId)
+    + addTransactionAndUpdateWallet(t, wallet) : void
+    + addRecurringExpenseWithBackfill(re, wallet) : void
+    + updateTransactionAndUpdateWallet(oldT, newT, wallet) : void
+    + deleteTransactionAndUpdateWallet(t, wallet) : void
+    --
+    - processRecurringExpenses(transactions, wallet) : void
+    - applyToWallet(t, wallet) : void
+    - revertFromWallet(t, wallet) : void
 }
 
-class CategoryService #FFF3E0 {
+class CategoryService {
     - categoryDAO : ICategoryDAO
     --
     + getAllCategories() : List<Category>
     + createCategory(name, type, icon, color) : int
-    + deleteCategories(categories)
-    + mergeCategories(sources, target)
-    + updateCategory(...)
+    + deleteCategories(categories) : void
+    + mergeCategories(sources, target) : void
+    + updateCategory(oldData, newData) : void
 }
 
-class BudgetService #FFF3E0 {
-    - budgetDAO : IBudgetDAO
-    - categoryDAO : ICategoryDAO
-    --
-    + fetchAllCategories() : List<Category>
-    + addBudget(budget, walletId)
-    + updateBudget(budget)
-    + removeBudget(budgetId)
-    + getBudgetsByWallet(walletId) : List<Budget>
-}
-
-class DashboardService #FFF3E0 {
+class DashboardService {
     - walletDAO : IWalletDAO
     - transactionDAO : ITransactionDAO
     --
     + getOrInitWallets() : List<Wallet>
-    + addWallet(wallet)
-    + deleteWallet(walletId)
+    + addWallet(wallet) : void
+    + deleteWallet(walletId) : void
     + calculateTotalBalance(wallets) : double
     + getOverviewData(start, end) : OverviewData
 }
 
-' ============= RELATIONSHIPS =============
-' Interface → Implementation
-ICategoryDAO <|.. CategoryDAO
-ITransactionDAO <|.. TransactionDAO
-IWalletDAO <|.. WalletDAO
-IBudgetDAO <|.. BudgetDAO
+class BudgetService {
+    - budgetDAO : IBudgetDAO
+    - categoryDAO : ICategoryDAO
+    --
+    + fetchAllCategories() : List<Category>
+    + addBudget(budget, walletId) : void
+    + updateBudget(budget) : void
+    + removeBudget(budgetId) : void
+    + getBudgetsByWallet(walletId) : List<Budget>
+}
 
-' TransactionDAO depends on ICategoryDAO
-TransactionDAO --> ICategoryDAO : uses
+rectangle "<b>DAO CONTRACTS</b>\nITransactionDAO · IWalletDAO" as TX_DEPS
+rectangle "<b>DAO CONTRACT</b>\nICategoryDAO" as CATEGORY_DEPS
+rectangle "<b>DAO CONTRACTS</b>\nIWalletDAO · ITransactionDAO" as DASHBOARD_DEPS
+rectangle "<b>DAO CONTRACTS</b>\nIBudgetDAO · ICategoryDAO" as BUDGET_DEPS
 
-' Service → DAO (composition)
-TransactionService o-right- ITransactionDAO
-TransactionService o-right- IWalletDAO
-CategoryService o-right- ICategoryDAO
-BudgetService o-right- IBudgetDAO
-BudgetService o-right- ICategoryDAO
-DashboardService o-right- IWalletDAO
-DashboardService o-right- ITransactionDAO
+together {
+    DashboardService -down-> DASHBOARD_DEPS : uses
+    BudgetService -down-> BUDGET_DEPS : uses
+    TransactionService -down-> TX_DEPS : uses
+    CategoryService -down-> CATEGORY_DEPS : uses
+}
+
+legend bottom
+  |= Service |= Trách nhiệm chính |
+  | TransactionService | CRUD giao dịch, recurring/backfill và cập nhật balance nguyên tử. |
+  | CategoryService | Tạo, sửa, xóa mềm và gộp category. |
+  | DashboardService | Khởi tạo ví mặc định, tính tổng balance và tổng quan theo kỳ. |
+  | BudgetService | CRUD budget và tải category phục vụ ngân sách. |
+  | <b>Tính nguyên tử</b> | Thao tác transaction + balance dùng cùng Connection; COMMIT khi thành công, ROLLBACK và phục hồi object khi lỗi. |
+endlegend
+
+@enduml
+
+@startuml Class_Service_Support_Types
+!pragma layout elk
+
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 10
+skinparam nodesep 56
+skinparam ranksep 56
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #64748B
+    HeaderBackgroundColor #E0F2FE
+    FontColor #1E293B
+}
+hide circle
+
+title <b>Application Service · Supporting Types</b>\n<size:12><color:#64748B>Owner / consumer → support type</color></size>
+top to bottom direction
+
+class DashboardService <<service summary>> {
+    + getOverviewData(start, end) : OverviewData
+}
+
+class "DashboardService.OverviewData" as OverviewData <<record>> {
+    + income : double
+    + expense : double
+    + netChange : double
+}
+
+class WalletOverviewCalculator <<utility>> {
+    + {static} compute(transactions) : OverviewResult
+    + {static} computeDailyBalance(...) : Map<LocalDate, Double>
+    + {static} createBuckets(...) : List<ChartBucket>
+}
+
+class WalletOverviewTabController <<UI consumer>> {
+    + updateOverviewData(...) : void
+}
+
+class RuntimeException <<JDK>>
+class TransactionValidationException
+
+together {
+    DashboardService *-down- OverviewData : owns / returns
+    WalletOverviewTabController .down.> WalletOverviewCalculator : uses
+    TransactionValidationException -up-|> RuntimeException
+}
+
+legend bottom
+  |= Quan hệ |= Ý nghĩa |
+  | DashboardService ◆— OverviewData | OverviewData là nested record bất biến do DashboardService tạo và trả về. |
+  | WalletOverviewTabController ⇢ WalletOverviewCalculator | UI gọi bộ tính biểu đồ/tổng hợp chạy trong bộ nhớ; calculator không dùng DAO. |
+  | TransactionValidationException ▻ RuntimeException | Ngoại lệ nghiệp vụ là unchecked exception. |
+endlegend
+
+@enduml
+
+@startuml Class_JDBC_Persistence
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 10
+skinparam nodesep 42
+skinparam ranksep 48
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #64748B
+    HeaderBackgroundColor #DBEAFE
+    FontColor #1E293B
+}
+skinparam interface {
+    BackgroundColor #F0FDF4
+    BorderColor #16A34A
+    FontColor #14532D
+}
+skinparam rectangle {
+    BorderColor #475569
+    BackgroundColor #475569
+}
+skinparam database {
+    BackgroundColor #FFF7ED
+    BorderColor #EA580C
+    FontColor #7C2D12
+}
+hide circle
+
+title <b>Persistence · JDBC DAO</b>\n<size:12><color:#64748B>core.storage · Contract → implementation → shared connection</color></size>
+top to bottom direction
+
+interface ITransactionDAO {
+    + saveTransaction(t, walletId) : void
+    + saveTransaction(conn, t, walletId) : void
+    + updateTransaction(t, walletId) : void
+    + updateTransaction(conn, t, walletId) : void
+    + deleteTransaction(id) : void
+    + deleteTransaction(conn, id) : void
+    + getTransactionsByWallet(wallet) : List<Transaction>
+    + getTotalAmountForPeriod(type, start, end) : double
+}
+
+class TransactionDAO {
+    - categoryDAO : ICategoryDAO
+}
+
+interface IWalletDAO {
+    + getAllWallets() : List<Wallet>
+    + addWallet(wallet) : void
+    + updateWallet(wallet) : void
+    + updateWallet(id, name, balance, currency) : void
+    + updateBalance(walletId, balance) : void
+    + updateBalance(conn, walletId, balance) : void
+    + deleteWallet(walletId) : void
+}
+
+class WalletDAO
+
+interface ICategoryDAO {
+    + getOrCreateCategoryId(...) : int
+    + getOrCreateCategoryId(conn, ...) : int
+    + getAllCategories() : List<Category>
+    + getCategoryId(name, type) : int
+    + getCategoryById(id) : Category
+    + mergeCategories(sources, target) : void
+    + updateCategory(...) : void
+    + softDeleteCategory(name, type) : void
+}
+
+class CategoryDAO
+
+interface IBudgetDAO {
+    + addBudget(budget, walletId) : void
+    + updateBudget(budget) : void
+    + deleteBudget(budgetId) : void
+    + getAllBudgets() : List<Budget>
+    + getBudgetsByWallet(walletId) : List<Budget>
+}
+
+class BudgetDAO {
+    - categoryDAO : ICategoryDAO
+}
+
+rectangle " " as JDBC_JOIN
+class DatabaseConnection <<utility>> {
+    - {static} URL : String
+    - {static} USER : String
+    - {static} PASSWORD : String
+    --
+    + {static} getConnection() : Connection
+}
+database "<b>MySQL</b>\nexpense_manager" as DB
+
+together {
+    WalletDAO .up.|> IWalletDAO
+    CategoryDAO .up.|> ICategoryDAO
+    BudgetDAO .up.|> IBudgetDAO
+    TransactionDAO .up.|> ITransactionDAO
+}
+
+together {
+    WalletDAO -down- JDBC_JOIN
+    CategoryDAO -down- JDBC_JOIN
+    BudgetDAO -down- JDBC_JOIN
+    TransactionDAO -down- JDBC_JOIN
+}
+JDBC_JOIN -down-> DatabaseConnection : getConnection()
+DatabaseConnection -down-> DB : JDBC
+
+legend bottom
+  |= Thành phần |= Quan hệ quan trọng |
+  | TransactionDAO | Dùng ICategoryDAO để tra/tạo category; có overload nhận Connection. |
+  | BudgetDAO | Dùng ICategoryDAO để ánh xạ Category của Budget. |
+  | 4 DAO | Cùng lấy Connection từ DatabaseConnection và ánh xạ object ↔ MySQL. |
+endlegend
+
+@enduml
+
+@startuml Class_CSV_Storage
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 10
+skinparam nodesep 48
+skinparam ranksep 52
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #64748B
+    HeaderBackgroundColor #CCFBF1
+    FontColor #1E293B
+}
+skinparam interface {
+    BackgroundColor #F0FDF4
+    BorderColor #16A34A
+    FontColor #14532D
+}
+skinparam file {
+    BackgroundColor #F0FDFA
+    BorderColor #0F766E
+    FontColor #134E4A
+}
+hide circle
+
+title <b>Persistence · CSV Storage</b>\n<size:12><color:#64748B>core.storage · Đường lưu trữ độc lập với JDBC DAO</color></size>
+top to bottom direction
+
+interface Storage {
+    + save(transactions, path) : void
+    + load(path) : List<Transaction>
+}
+
+class CsvStorage {
+    - {static} HEADER : String
+    - {static} COLUMN_COUNT : int = 16
+    --
+    + save(transactions, path) : void
+    + load(path) : List<Transaction>
+}
+
+file "<b>CSV UTF-8</b>\nHeader cố định · 16 columns" as CSV_FILE
+
+CsvStorage .up.|> Storage
+CsvStorage -down-> CSV_FILE : save / load
+
+legend bottom
+  |= Quy tắc CSV |= Giá trị |
+  | Encoding | UTF-8. |
+  | Schema | Header cố định và đúng 16 cột. |
+  | Transaction hỗ trợ | INCOME, EXPENSE và RECURRING_EXPENSE. |
+  | Dữ liệu lỗi | Từ chối dòng thiếu/thừa cột hoặc giá trị không chuyển đổi được. |
+endlegend
 
 @enduml

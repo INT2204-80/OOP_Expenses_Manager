@@ -1,91 +1,101 @@
 @startuml Sequence_RecurringExpense
-' ====== CLEAN LIGHT THEME ======
+
 skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
-skinparam defaultFontSize 12
+skinparam defaultFontSize 13
 skinparam shadowing false
-
+skinparam maxMessageSize 58
 skinparam sequence {
-    ArrowColor #1565C0
-    LifeLineBorderColor #90CAF9
-    LifeLineBackgroundColor #F5F5F5
-    ParticipantBorderColor #1565C0
+    ArrowColor #455A64
+    LifeLineBorderColor #90A4AE
+    LifeLineBackgroundColor #FAFAFA
+    ParticipantBorderColor #607D8B
     ParticipantBackgroundColor #E3F2FD
-    ParticipantFontColor #0D47A1
     ActorBorderColor #E65100
     ActorBackgroundColor #FFF3E0
-    DividerBackgroundColor #E8EAF6
-    DividerBorderColor #C5CAE9
     GroupBackgroundColor #FAFAFA
-    GroupBorderColor #BDBDBD
+    GroupBorderColor #B0BEC5
+    ParticipantPadding 20
 }
 skinparam note {
-    BackgroundColor #FFF9C4
+    BackgroundColor #FFF8E1
     BorderColor #F9A825
-    FontColor #212121
 }
 
-title Sequence Diagram – Xử lý chi tiêu định kỳ (Recurring)
+title Sequence - Xử lý chi tiêu định kỳ quá hạn
+autonumber
 
 actor "Người dùng" as User
-participant "WalletView\nController" as UI
-participant "Transaction\nService" as TS
-participant "Transaction\nDAO" as TDAO
-participant "Recurring\nExpense" as RE
+boundary "WalletView\nController" as Controller
+control "Transaction\nService" as Service
+entity "Recurring\nExpense" as Recurring
+entity "Wallet" as Wallet
+participant "DAO layer\nTransactionDAO + WalletDAO" as DAO
 database "MySQL" as DB
 
-User -> UI : Mở / Chọn Wallet
-UI -> TS : getTransactionsByWallet(wallet)
-activate TS #FFF3E0
+User -> Controller : Mở / làm mới màn hình ví
+Controller -> Service : getTransactionsByWallet(wallet)
 
-== 1. Tải giao dịch từ DB ==
+group Tải và xác định các kỳ đã qua
+    Service -> DAO : getTransactionsByWallet(wallet)
+    DAO -> DB : SELECT transactions + categories WHERE wallet_id = ?
+    DB --> DAO : rows
+    DAO --> Service : List<Transaction>
+    Service -> Service : snapshot balance, wallet.transactions, passedPeriods
 
-TS -> TDAO : getTransactionsByWallet(wallet)
-activate TDAO #E8F5E9
-TDAO -> DB : SELECT t.*, c.*\nFROM transactions t\nJOIN categories c ...
-DB --> TDAO : ResultSet
-note right of TDAO
-  Xây dựng các đối tượng:
-  Income, Expense,
-  **RecurringExpense**
-end note
-TDAO --> TS : List<Transaction>
-deactivate TDAO
+    loop Mỗi RecurringExpense re
+        Service -> Recurring : oldPassed = getPassedPeriods()
+        Service -> Recurring : nextDueDate()
+        Recurring --> Service : cập nhật passedPeriods; trả kỳ kế tiếp
 
-== 2. Kiểm tra & phát sinh kỳ mới ==
-
-TS -> TS : processRecurringExpenses(list, walletId)
-
-loop Mỗi RecurringExpense (re)
-
-    TS -> RE : oldPassed = getPassedPeriods()
-    TS -> RE : nextDueDate()
-    note right of RE
-      So sánh với ngày hôm nay.
-      Nếu đã qua hạn → tăng
-      passedPeriods, tính
-      currentDueDate mới.
-    end note
-    TS -> RE : newPassed = getPassedPeriods()
-
-    alt newPassed > oldPassed
-
-        loop i = oldPassed+1 → newPassed
-            TS -> TS : Tạo Expense mới\n(Auto-generated)
-            TS -> TDAO : saveTransaction(newExpense)
-            TDAO -> DB : INSERT INTO transactions
+        alt passedPeriods tăng
+            loop Mỗi kỳ mới bị quá hạn
+                Service -> Service : Tạo Expense cho occurrenceDate
+                Service -> Wallet : withdraw(amount)
+                Service -> Service : newExpenses.add(expense)
+            end
         end
-
-        TS -> TDAO : updateTransaction(re)
-        TDAO -> DB : UPDATE passed_periods
-
     end
 end
 
-== 3. Trả kết quả ==
+alt Không có kỳ mới
+    Service --> Controller : List<Transaction> không đổi
+else Có kỳ mới
+    group Lưu toàn bộ thay đổi nguyên tử
+        Service -> DAO : update recurring + save expenses + update balance
+        DAO -> DB : BEGIN; UPDATE + INSERT + UPDATE wallet
+        DB --> DAO : generated IDs / kết quả
 
-TS --> UI : List đầy đủ\n(kèm kỳ phát sinh)
-deactivate TS
-UI --> User : Hiển thị danh sách giao dịch
+        alt Thành công
+            DAO -> DB : COMMIT
+            DAO --> Service : success
+            Service -> Service : transactions.addAll(newExpenses)
+            Service --> Controller : List<Transaction> đã cập nhật
+        else Thiếu số dư hoặc lỗi DAO / JDBC
+            DAO -> DB : ROLLBACK (nếu đã bắt đầu)
+            DAO --> Service : exception
+            Service -> Recurring : khôi phục passedPeriods cũ
+            Service -> Wallet : khôi phục balance và transaction list
+            Service -> Service : bỏ các Expense vừa sinh
+            Service --> Controller : RuntimeException
+            Controller --> User : Hiển thị Alert lỗi
+        end
+    end
+end
+
+opt Thành công
+    Controller -> Wallet : clear transactions; addAll(loadedTransactions)
+    Controller --> User : Hiển thị giao dịch và số dư mới
+end
+
+note over Recurring, Wallet
+  nextDueDate() tiến tới kỳ đầu tiên sau ngày tham chiếu
+  và không vượt endDate. Mỗi kỳ đã qua chỉ được sinh một lần.
+end note
+
+note over Controller, DAO
+  PendingRecurringOccurrence chỉ phục vụ dự phóng tương lai:
+  không lưu DB và không trừ tiền trong ví.
+end note
 
 @enduml

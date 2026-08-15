@@ -1,137 +1,225 @@
-@startuml Class_UI_Controllers
-' ====== CLEAN LIGHT THEME ======
-skinparam backgroundColor white
+@startuml UI_Entry_Controllers
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
 skinparam defaultFontName "Segoe UI"
 skinparam defaultFontSize 12
 skinparam shadowing false
-skinparam classAttributeIconSize 0
 skinparam linetype ortho
-
+skinparam roundCorner 10
+skinparam nodesep 48
+skinparam ranksep 50
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
 skinparam class {
     BackgroundColor #FFFFFF
-    BorderColor #90CAF9
-    HeaderBackgroundColor #E3F2FD
-    FontColor #212121
-    ArrowColor #1565C0
-    StereotypeFontColor #1565C0
+    BorderColor #64748B
+    HeaderBackgroundColor #EDE9FE
+    FontColor #1E293B
+}
+skinparam rectangle {
+    BackgroundColor #F1F5F9
+    BorderColor #94A3B8
+    FontColor #334155
+    RoundCorner 10
+}
+hide circle
+
+title <b>JavaFX UI · Entry Controllers</b>\n<size:12><color:#64748B>expensemanager.ui.controllers · Controller → application/persistence dependencies</color></size>
+top to bottom direction
+
+class DashboardController {
+    + initialize() : void
+    + handleAddWallet() : void
+    - refreshWallets() : void
+    - refreshOverview() : void
+    - openWalletView(wallet) : void
 }
 
-title Class Diagram – UI Controllers & Factories
-
-' ============= CONTROLLERS (purple) =============
-class DashboardController #F3E5F5 {
-    - dashboardService : DashboardService
+class WalletViewController {
+    - currentWallet : Wallet
+    - transactionManager : WalletTransactionManager
+    - categoryManager : WalletCategoryManager
+    - budgetManager : WalletBudgetManager
+    - overviewController : WalletOverviewTabController
+    - periodFilterManager : PeriodFilterManager
     --
-    + initialize()
-    - loadWalletCards()
-    - handleAddWallet()
+    + initData(wallet) : void
+    - reloadTransactionsFromStore() : void
+    - refreshTransactionsView() : void
+    - updateOverviewData() : void
+    - refreshBalanceLabels() : void
 }
 
-class WalletViewController #F3E5F5 {
-    - transactionService : TransactionService
-    - budgetService : BudgetService
-    - categoryService : CategoryService
+class BudgetsViewController {
+    + initialize() : void
+    - loadBudgets() : void
+    - handleEditBudget(budget) : void
+    - handleDeleteBudget(budget) : void
+}
+
+rectangle "<b>PRIMARY DEPENDENCIES</b>\nDashboardService" as DASHBOARD_DEPS
+rectangle "<b>PRIMARY DEPENDENCIES</b>\nTransactionService · CategoryService · BudgetService\nIWalletDAO" as WALLET_DEPS
+rectangle "<b>PRIMARY DEPENDENCIES</b>\nBudgetService\nIWalletDAO · ITransactionDAO · IBudgetDAO" as BUDGETS_DEPS
+
+together {
+    WalletViewController -down-> WALLET_DEPS : coordinates
+    BudgetsViewController -down-> BUDGETS_DEPS : uses
+    DashboardController -down-> DASHBOARD_DEPS : uses
+}
+
+legend bottom
+  |= Controller |= Vai trò chính |
+  | DashboardController | Hiển thị danh sách ví, tổng quan và mở màn hình ví. |
+  | WalletViewController | Điều phối 5 manager theo từng concern của màn hình ví. |
+  | BudgetsViewController | Tải, sửa và xóa ngân sách; code hiện tại còn dùng DAO contract trực tiếp. |
+endlegend
+
+@enduml
+
+@startuml UI_Wallet_Screen_Composition
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 10
+skinparam nodesep 42
+skinparam ranksep 52
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowThickness 1.2
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam classAttributeIconSize 0
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #64748B
+    HeaderBackgroundColor #DCFCE7
+    FontColor #1E293B
+}
+skinparam rectangle {
+    BorderColor #475569
+    BackgroundColor #475569
+}
+hide circle
+
+title <b>JavaFX UI · Wallet Screen Composition</b>\n<size:12><color:#64748B>WalletViewController chia trách nhiệm cho 5 manager</color></size>
+top to bottom direction
+
+class WalletViewController {
+    - currentWallet : Wallet
     --
-    + initData(wallet : Wallet)
-    - refreshTransactionsView()
-    - refreshBalanceLabels()
-    - switchTab(tab, menu)
+    + initData(wallet) : void
+    - refreshTransactionsView() : void
+    - updateOverviewData() : void
+    - refreshBalanceLabels() : void
 }
 
-class BudgetsViewController #F3E5F5 {
-    - budgetService : BudgetService
-    --
-    + initialize()
-    - loadBudgets()
-    - handleEditBudget(budget)
-    - handleDeleteBudget(budget)
+rectangle " " as MANAGER_JOIN
+
+class WalletTransactionManager {
+    + setupFilters(...) : void
+    + getFilteredTransactions(...) : List<Transaction>
+    + renderTransactions(...) : void
+    + showAddTransactionDialog(...) : void
 }
 
-' ============= MANAGERS (blue) =============
-class WalletTransactionManager #E3F2FD {
-    - transactionService : TransactionService
-    --
-    + showAddTransactionDialog(...)
-    + renderTransactions(...)
-    + getFilteredTransactions(...) : List
+class WalletCategoryManager {
+    + getAllCategories() : List<Category>
+    + loadCategoriesToUI(...) : void
+    + handleCreateCategory(...) : void
+    + handleDeleteCategories(...) : void
+    + handleMergeCategories(...) : void
 }
 
-class WalletCategoryManager #E3F2FD {
-    - categoryService : CategoryService
-    --
-    + loadCategoriesToUI(...)
-    + handleCreateCategory(...)
-    + handleDeleteCategories(...)
-    + handleMergeCategories(...)
+class WalletBudgetManager {
+    + handleShowAddBudgetDialog(...) : void
+    + renderBudgets(...) : void
 }
 
-class WalletBudgetManager #E3F2FD {
-    - budgetService : BudgetService
-    --
-    + handleShowAddBudgetDialog(...)
-    + renderBudgets(...)
+class WalletOverviewTabController {
+    + updateOverviewData(...) : void
+    + setBalanceViewMode(mode) : void
+    + setChangesViewMode(mode) : void
 }
 
-class WalletOverviewTabController #E3F2FD {
-    + updateOverviewData(...)
-    + setBalanceViewMode(mode)
-    + setChangesViewMode(mode)
+class PeriodFilterManager {
+    + getStart() : LocalDate
+    + getEnd() : LocalDate
+    + isFutureOnly() : boolean
+    + handlePrevPeriod(callback) : void
+    + handleNextPeriod(callback) : void
+    + handleCustomPeriod(callback) : void
 }
 
-class PeriodFilterManager #E3F2FD {
-    - startDate : LocalDate
-    - endDate : LocalDate
-    --
-    + handlePrevPeriod(callback)
-    + handleNextPeriod(callback)
-    + handleCustomPeriod(callback)
+WalletViewController *-down- MANAGER_JOIN : owns
+together {
+    WalletOverviewTabController -up- MANAGER_JOIN
+    PeriodFilterManager -up- MANAGER_JOIN
+    WalletTransactionManager -up- MANAGER_JOIN
+    WalletCategoryManager -up- MANAGER_JOIN
+    WalletBudgetManager -up- MANAGER_JOIN
 }
 
-' ============= FACTORIES (green) =============
-class WalletCardFactory <<Factory>> #E8F5E9 {
-    + {static} createWalletCard(...) : VBox
+legend bottom
+  |= Manager |= Concern được tách khỏi controller |
+  | WalletTransactionManager | CRUD, lọc, render và recurring projection. |
+  | WalletCategoryManager | Tạo, sửa, xóa mềm, gộp category. |
+  | WalletBudgetManager | Tạo và render tiến độ budget. |
+  | WalletOverviewTabController | Tổng hợp số liệu và cập nhật chart. |
+  | PeriodFilterManager | Kỳ trước/sau, khoảng tùy chọn và future-only. |
+endlegend
+
+@enduml
+
+@startuml UI_Factories_Utilities
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 13
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 12
+skinparam nodesep 65
+skinparam ranksep 55
+skinparam ArrowColor #475569
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #64748B
+    FontColor #1E293B
+    RoundCorner 12
 }
 
-class TransactionDialogFactory <<Factory>> #E8F5E9 {
-    + {static} createAddDialog(...) : Dialog
-    + {static} createEditDialog(...) : Dialog
-}
+title <b>JavaFX UI · Factories & Utilities</b>\n<size:12><color:#64748B>Thành phần hỗ trợ tạo view, lọc, định dạng và biểu đồ</color></size>
+left to right direction
 
-class TransactionRowFactory <<Factory>> #E8F5E9 {
-    + {static} createTransactionRow(...) : HBox
-}
+rectangle "<b>UI FACTORIES</b>\n\nWalletCardFactory\nTransactionDialogFactory · TransactionRowFactory\nBudgetDialogFactory · BudgetCardFactory\nCategoryDialogFactory · CategoryRowFactory" as FACTORIES #FEFCE8
 
-class BudgetDialogFactory <<Factory>> #E8F5E9 {
-    + {static} createAddBudgetDialog(...) : Dialog
-    + {static} createEditBudgetDialog(...) : Dialog
-}
+rectangle "<b>UI UTILITIES</b>\n\nDashboardDialogHelper · MoneyFormat\nTransactionFilter · WalletChartHelper\nColorPalette" as UTILITIES #F1F5F9
 
-class BudgetCardFactory <<Factory>> #E8F5E9 {
-    + {static} createBudgetCard(...) : VBox
-}
+FACTORIES -[hidden]right- UTILITIES
 
-class CategoryDialogFactory <<Factory>> #E8F5E9 {
-    + {static} createEditDialog(...) : Dialog
-}
-
-class CategoryRowFactory <<Factory>> #E8F5E9 {
-    + {static} createCategoryRow(...) : HBox
-}
-
-' ============= COMPOSITION =============
-WalletViewController *-- WalletTransactionManager
-WalletViewController *-- WalletCategoryManager
-WalletViewController *-- WalletBudgetManager
-WalletViewController *-- WalletOverviewTabController
-WalletViewController *-- PeriodFilterManager
-
-' ============= USAGE =============
-DashboardController ..> WalletCardFactory : uses
-WalletTransactionManager ..> TransactionDialogFactory : uses
-WalletTransactionManager ..> TransactionRowFactory : uses
-WalletBudgetManager ..> BudgetDialogFactory : uses
-WalletBudgetManager ..> BudgetCardFactory : uses
-WalletCategoryManager ..> CategoryDialogFactory : uses
-WalletCategoryManager ..> CategoryRowFactory : uses
+legend bottom
+  |= Consumer |= Hỗ trợ sử dụng |
+  | DashboardController | WalletCardFactory, DashboardDialogHelper, MoneyFormat. |
+  | WalletTransactionManager | TransactionDialogFactory, TransactionRowFactory, TransactionFilter. |
+  | WalletCategoryManager | CategoryDialogFactory, CategoryRowFactory, ColorPalette. |
+  | WalletBudgetManager | BudgetDialogFactory, BudgetCardFactory. |
+  | WalletOverviewTabController | WalletOverviewCalculator, WalletChartHelper. |
+  | PeriodFilterManager | DashboardDialogHelper. |
+endlegend
 
 @enduml

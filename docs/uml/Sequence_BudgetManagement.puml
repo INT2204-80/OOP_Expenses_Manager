@@ -1,98 +1,86 @@
 @startuml Sequence_BudgetManagement
-' ====== CLEAN LIGHT THEME ======
+
 skinparam backgroundColor white
 skinparam defaultFontName "Segoe UI"
-skinparam defaultFontSize 12
+skinparam defaultFontSize 13
 skinparam shadowing false
-
+skinparam maxMessageSize 55
 skinparam sequence {
-    ArrowColor #1565C0
-    LifeLineBorderColor #90CAF9
-    LifeLineBackgroundColor #F5F5F5
-    ParticipantBorderColor #1565C0
+    ArrowColor #455A64
+    LifeLineBorderColor #90A4AE
+    LifeLineBackgroundColor #FAFAFA
+    ParticipantBorderColor #607D8B
     ParticipantBackgroundColor #E3F2FD
-    ParticipantFontColor #0D47A1
     ActorBorderColor #E65100
     ActorBackgroundColor #FFF3E0
-    DividerBackgroundColor #E8EAF6
-    DividerBorderColor #C5CAE9
     GroupBackgroundColor #FAFAFA
-    GroupBorderColor #BDBDBD
+    GroupBorderColor #B0BEC5
+    ParticipantPadding 22
 }
 skinparam note {
-    BackgroundColor #FFF9C4
+    BackgroundColor #FFF8E1
     BorderColor #F9A825
-    FontColor #212121
 }
 
-title Sequence Diagram – Tạo & Theo dõi Ngân sách
+title Sequence - Quản lý ngân sách
+autonumber
 
 actor "Người dùng" as User
-participant "WalletBudget\nManager" as UI
-participant "Budget\nService" as BS
-participant "BudgetDAO" as BDAO
-participant "Budget" as B
+boundary "WalletView\nController" as Controller
+control "WalletBudget\nManager" as Manager
+boundary "Budget dialog / card" as UI
+control "BudgetService" as Service
+participant "BudgetDAO\n(+ CategoryDAO)" as DAO
 database "MySQL" as DB
 
-== 1. Tạo Ngân sách mới ==
+alt Tạo ngân sách
+    User -> Controller : Bấm "Tạo ngân sách"
+    Controller -> Manager : handleShowAddBudgetDialog(categories, wallet, container)
+    Manager -> UI : Mở add dialog
+    UI --> User : Hiển thị biểu mẫu
+    User -> UI : Nhập và xác nhận
+    UI --> Manager : Budget mới
+    Manager -> Service : addBudget(budget, walletId)
+    Service -> DAO : addBudget(budget, walletId)
+    DAO -> DB : Tra categoryId; INSERT budget
+    DB --> DAO : generatedId
+    DAO --> Service : Budget đã có ID
 
-User -> UI : Bấm "Tạo ngân sách"
-activate UI #F3E5F5
+else Sửa ngân sách
+    User -> Manager : Chọn "Sửa"
+    Manager -> UI : Mở edit dialog(budget, categories)
+    User -> UI : Sửa và xác nhận
+    UI --> Manager : Budget đã cập nhật
+    Manager -> Service : updateBudget(budget)
+    Service -> DAO : updateBudget(budget)
+    DAO -> DB : Tra categoryId; UPDATE budget
 
-UI --> User : Hiển thị Dialog nhập liệu
-
-User -> UI : Nhập thông tin & Submit
-
-UI -> BS : addBudget(budget, walletId)
-activate BS #FFF3E0
-
-BS -> BDAO : addBudget(budget, walletId)
-activate BDAO #E8F5E9
-BDAO -> DB : INSERT INTO budgets
-DB --> BDAO : done
-BDAO --> BS : done
-deactivate BDAO
-
-BS --> UI : done
-deactivate BS
-
-== 2. Tải danh sách Ngân sách ==
-
-UI -> BS : getBudgetsByWallet(walletId)
-activate BS #FFF3E0
-BS -> BDAO : getBudgetsByWallet(walletId)
-activate BDAO #E8F5E9
-BDAO -> DB : SELECT * FROM budgets WHERE wallet_id = ?
-DB --> BDAO : List<Budget>
-BDAO --> BS : List<Budget>
-deactivate BDAO
-BS --> UI : List<Budget>
-deactivate BS
-
-== 3. Tính toán tiến độ (Progress) ==
-
-loop Mỗi Budget trong danh sách
-    UI -> B : updateSpentFromTransactions(transactions)
-    activate B #E8F5E9
-    note right of B
-        Duyệt giao dịch của ví:
-        - Cùng danh mục
-        - Trong khoảng thời gian
-        → Cộng dồn vào currentSpent
-    end note
-    B --> UI : done
-    deactivate B
-
-    UI -> UI : createBudgetCard(budget)
-    note right of UI
-        Vẽ Progress Bar:
-        • < 80%: Xanh lá
-        • 80-100%: Vàng
-        • > 100%: Đỏ (Vượt mức)
-    end note
+else Xóa ngân sách
+    User -> Manager : Xác nhận xóa
+    Manager -> Service : removeBudget(budgetId)
+    Service -> DAO : deleteBudget(budgetId)
+    DAO -> DB : DELETE budget
 end
 
-UI --> User : Hiển thị danh sách ngân sách\nkèm thanh tiến độ
-deactivate UI
+group Làm mới danh sách và tiến độ
+    Manager -> Service : getBudgetsByWallet(walletId)
+    Service -> DAO : getBudgetsByWallet(walletId)
+    DAO -> DB : SELECT budgets + tra Category theo categoryId
+    DB --> DAO : rows
+    DAO --> Service : List<Budget>
+    Service --> Manager : List<Budget>
+
+    loop Mỗi Budget
+        Manager -> Manager : budget.updateSpentFromTransactions(wallet.transactions)
+        Manager -> UI : createBudgetCard(budget, callbacks)
+    end
+    Manager -> Controller : Cập nhật budgetsContainer
+    Controller --> User : Hiển thị hạn mức, đã chi và còn lại
+end
+
+note over Manager, UI
+  currentSpent được tính lại trong bộ nhớ để hiển thị:
+  chỉ Expense cùng category và trong [startDate, endDate].
+end note
 
 @enduml

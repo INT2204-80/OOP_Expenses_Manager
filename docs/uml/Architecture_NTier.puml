@@ -1,86 +1,74 @@
 @startuml Architecture_NTier
-' ====== CLEAN LIGHT THEME ======
-skinparam backgroundColor white
+!pragma layout elk
+allowmixing
+
+skinparam backgroundColor #F8FAFC
 skinparam defaultFontName "Segoe UI"
 skinparam defaultFontSize 13
 skinparam shadowing false
 skinparam linetype ortho
-skinparam roundCorner 10
-
+skinparam roundCorner 12
+skinparam nodesep 44
+skinparam ranksep 52
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #334155
+skinparam ArrowFontSize 12
+skinparam ArrowThickness 1.25
+skinparam TitleFontColor #0F172A
+skinparam TitleFontSize 20
 skinparam rectangle {
-    FontColor #212121
-    RoundCorner 10
+    BackgroundColor #FFFFFF
+    BorderColor #64748B
+    FontColor #1E293B
+    RoundCorner 12
 }
-
 skinparam database {
-    BackgroundColor #FFF9C4
-    BorderColor #F9A825
-    FontColor #212121
+    BackgroundColor #FFF7ED
+    BorderColor #EA580C
+    FontColor #7C2D12
+}
+skinparam file {
+    BackgroundColor #F0FDFA
+    BorderColor #0F766E
+    FontColor #134E4A
+}
+skinparam note {
+    BackgroundColor #FFFBEB
+    BorderColor #D97706
+    FontColor #422006
 }
 
-title <size:18><b>OOP Expenses Manager – N-Tier Architecture</b></size>
+title <b>OOP Expenses Manager</b>\n<size:13><color:#64748B>Kiến trúc phân tầng · Current implementation</color></size>
+top to bottom direction
 
-rectangle "🖥️ **UI Layer** (JavaFX Controllers)" as UILayer #E8EAF6 {
-    rectangle "DashboardController" as DC #F3E5F5
-    rectangle "WalletViewController" as WVC #F3E5F5
-    rectangle "BudgetsViewController" as BVC #F3E5F5
-    rectangle "WalletTransactionManager" as WTM #E8EAF6
-    rectangle "WalletCategoryManager" as WCM #E8EAF6
-    rectangle "WalletBudgetManager" as WBM #E8EAF6
+rectangle "<b>1 · PRESENTATION</b>\n<color:#64748B>expensemanager.ui</color>\n\n<b>Entry controllers</b>\nDashboardController · WalletViewController · BudgetsViewController\n\n<b>Wallet screen managers</b>\nTransaction · Category · Budget · Overview · Period filter\n\n<b>Factories & UI utilities</b>\nDialog · Card · Row · Filter · Chart · Format" as UI #F5F3FF
+
+rectangle "<b>2 · APPLICATION</b>\n<color:#64748B>expensemanager.service</color>\n\nDashboardService · TransactionService\nCategoryService · BudgetService\nWalletOverviewCalculator\n\n<color:#9A3412>Điều phối use case · kiểm tra nghiệp vụ · giao dịch JDBC nguyên tử</color>" as APP #FFF7ED
+
+rectangle "<b>3 · CORE</b>\n<color:#64748B>core · core.wallet · core.transaction · core.storage contracts</color>\n\n<b>DOMAIN MODEL</b>\nWallet hierarchy · Transaction hierarchy\nCategory · Budget · Period · enum\n\n──────────────\n\n<b>PERSISTENCE CONTRACTS</b>\nIWalletDAO · ITransactionDAO · ICategoryDAO · IBudgetDAO · Storage\n\n<color:#166534>Hai mối quan tâm ngang hàng trong cùng ranh giới core</color>" as CORE #F0FDF4
+
+rectangle "<b>4 · PERSISTENCE IMPLEMENTATIONS</b>\n<color:#64748B>core.storage</color>\n\nWalletDAO · TransactionDAO · CategoryDAO · BudgetDAO\nDatabaseConnection\n\nCsvStorage" as PERSISTENCE #EFF6FF
+
+rectangle " " as STORE_JOIN #475569
+database "<b>MySQL</b>\nexpense_manager" as MYSQL
+file "<b>CSV UTF-8</b>\n16 columns" as CSV
+
+UI -down-> APP : gọi service
+APP -down-> CORE : dùng domain & DAO contracts
+PERSISTENCE -up-> CORE : hiện thực contracts & ánh xạ domain
+PERSISTENCE -down- STORE_JOIN
+together {
+    STORE_JOIN -down-> MYSQL : JDBC
+    STORE_JOIN -down-> CSV : save / load
 }
 
-rectangle "⚙️ **Service Layer** (Business Logic)" as SvcLayer #FFF3E0 {
-    rectangle "DashboardService" as DS #FFF3E0
-    rectangle "TransactionService" as TS #FFF3E0
-    rectangle "CategoryService" as CS #FFF3E0
-    rectangle "BudgetService" as BS #FFF3E0
-}
-
-rectangle "📋 **DAO Interfaces** (Contracts)" as IntLayer #E3F2FD {
-    rectangle "ITransactionDAO" as ITDAO #E3F2FD
-    rectangle "ICategoryDAO" as ICDAO #E3F2FD
-    rectangle "IWalletDAO" as IWDAO #E3F2FD
-    rectangle "IBudgetDAO" as IBDAO #E3F2FD
-}
-
-rectangle "🗄️ **DAO Layer** (Implementations)" as DAOLayer #E8F5E9 {
-    rectangle "TransactionDAO" as TDAO #E8F5E9
-    rectangle "CategoryDAO" as CDAO #E8F5E9
-    rectangle "WalletDAO" as WDAO #E8F5E9
-    rectangle "BudgetDAO" as BDAO #E8F5E9
-}
-
-database "💾 MySQL 8.3" as MySQL
-
-' ===== UI -> Service =====
-DC --> DS
-WVC --> TS
-WVC --> CS
-WVC --> BS
-WTM --> TS
-WCM --> CS
-WBM --> BS
-BVC --> BS
-
-' ===== Service -> Interface =====
-TS --> ITDAO
-TS --> IWDAO
-CS --> ICDAO
-BS --> IBDAO
-BS --> ICDAO
-DS --> IWDAO
-DS --> ITDAO
-
-' ===== Interface -> Implementation =====
-ITDAO ..> TDAO : implements
-ICDAO ..> CDAO : implements
-IWDAO ..> WDAO : implements
-IBDAO ..> BDAO : implements
-
-' ===== DAO -> DB =====
-TDAO --> MySQL
-CDAO --> MySQL
-WDAO --> MySQL
-BDAO --> MySQL
+legend bottom
+  |= Luồng |= Ý nghĩa |
+  | Presentation → Application | UI gọi các use case qua service. |
+  | Application → Core | Service dùng domain model và persistence contracts. |
+  | Persistence → Core | DAO hiện thực contract và ánh xạ dữ liệu thành domain object. |
+  | Persistence → Data stores | JDBC với MySQL; CsvStorage đọc/ghi tệp CSV UTF-8. |
+  | <b>Hiện trạng UI</b> | Controller khởi tạo concrete service/DAO; WalletViewController và BudgetsViewController còn dùng một số DAO contract trực tiếp. |
+endlegend
 
 @enduml
